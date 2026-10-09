@@ -1,0 +1,1242 @@
+<!DOCTYPE html>
+
+<html lang="de">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+>
+
+<title>PrivLines AI</title>
+
+<link rel="manifest" href="/manifest.webmanifest">
+    <link
+    rel="icon"
+    type="image/png"
+    href="/logo_black.png"
+>
+
+<style>
+
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: Arial, Helvetica, sans-serif;
+    }
+
+    :root {
+        --background: #000000;
+        --text: #ffffff;
+        --text-muted: rgba(255, 255, 255, 0.65);
+        --glass: rgba(255, 255, 255, 0.075);
+        --glass-border: rgba(255, 255, 255, 0.16);
+    }
+
+    body {
+        height: 100vh;
+        overflow: hidden;
+        background: #000000;
+        color: #ffffff;
+    }
+
+    .background {
+        position: fixed;
+        inset: 0;
+        background: #000000;
+    }
+
+    .chat-container {
+        position: relative;
+        z-index: 2;
+
+        width: 100%;
+        height: 100%;
+        min-height: 0;
+
+        display: flex;
+        flex-direction: column;
+
+        overflow: hidden;
+
+        background: rgba(255, 255, 255, 0.045);
+
+        backdrop-filter: blur(25px);
+        -webkit-backdrop-filter: blur(25px);
+
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 20px;
+    }
+
+    .chat-header {
+        position: relative;
+
+        flex-shrink: 0;
+
+        min-height: 75px;
+        padding: 12px 18px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        gap: 12px;
+
+        font-size: 18px;
+        font-weight: bold;
+
+        background: rgba(255, 255, 255, 0.055);
+
+        border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    .back-button {
+        position: absolute;
+
+        left: 18px;
+        top: 50%;
+
+        transform: translateY(-50%);
+
+        width: 42px;
+        height: 42px;
+
+        display: flex;
+        align-items: center;
+        justify-content: center;
+
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        border-radius: 11px;
+
+        background: rgba(255, 255, 255, 0.065);
+
+        color: #ffffff;
+
+        font-size: 23px;
+        line-height: 1;
+
+        cursor: pointer;
+
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+
+        transition:
+            background .2s ease,
+            transform .2s ease;
+    }
+
+    .back-button:hover {
+        background: rgba(255, 255, 255, 0.11);
+    }
+
+    .back-button:active {
+        transform:
+            translateY(-50%)
+            scale(.95);
+    }
+
+    #chat-box {
+        flex: 1;
+        min-height: 0;
+
+        padding: 18px;
+
+        display: flex;
+        flex-direction: column;
+
+        gap: 12px;
+
+        overflow-y: auto;
+        overflow-x: hidden;
+
+        scrollbar-width: thin;
+
+        scrollbar-color:
+            rgba(255, 255, 255, 0.35)
+            transparent;
+    }
+
+    #chat-box::-webkit-scrollbar {
+        width: 7px;
+    }
+
+    #chat-box::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.25);
+        border-radius: 10px;
+    }
+
+    #chat-box::-webkit-scrollbar-thumb:hover {
+        background: rgba(255, 255, 255, 0.45);
+    }
+
+    .msg {
+        flex-shrink: 0;
+
+        max-width: 80%;
+
+        padding: 11px 14px;
+
+        font-size: 14px;
+        line-height: 1.45;
+
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
+
+        border-radius: 14px;
+
+        white-space: pre-wrap;
+    }
+
+    .user {
+        align-self: flex-end;
+
+        color: #000000;
+
+        background: #ffffff;
+
+        border-bottom-right-radius: 5px;
+    }
+
+    .ai {
+        align-self: flex-start;
+
+        color: #ffffff;
+
+        background: rgba(255, 255, 255, 0.075);
+
+        border: 1px solid rgba(255, 255, 255, 0.12);
+
+        border-bottom-left-radius: 5px;
+    }
+
+    .image-message {
+        max-width: 90%;
+        padding: 6px;
+
+        overflow: hidden;
+    }
+
+    .image-message img {
+        display: block;
+
+        width: 100%;
+        max-width: 600px;
+
+        height: auto;
+
+        border-radius: 10px;
+
+        border: 1px solid rgba(255, 255, 255, 0.15);
+
+        cursor: pointer;
+    }
+
+    .chat-input {
+        flex-shrink: 0;
+
+        display: flex;
+
+        gap: 8px;
+
+        padding: 12px;
+
+        border-top: 1px solid rgba(255, 255, 255, 0.12);
+
+        background: rgba(0, 0, 0, 0.60);
+
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+    }
+
+    .chat-input input {
+        flex: 1;
+
+        min-width: 0;
+
+        padding: 12px 14px;
+
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        outline: none;
+
+        border-radius: 11px;
+
+        background: rgba(255, 255, 255, 0.065);
+
+        color: #ffffff;
+
+        font-size: 14px;
+    }
+
+    .chat-input input::placeholder {
+        color: rgba(255, 255, 255, 0.35);
+    }
+
+    .chat-input input:focus {
+        border-color: rgba(255, 255, 255, 0.65);
+
+        box-shadow:
+            0 0 0 2px
+            rgba(255, 255, 255, 0.10);
+    }
+
+    .chat-input button {
+        flex-shrink: 0;
+
+        padding: 11px 18px;
+
+        border: 1px solid #ffffff;
+        border-radius: 11px;
+
+        background: #ffffff;
+
+        color: #000000;
+
+        font-size: 14px;
+        font-weight: bold;
+
+        cursor: pointer;
+
+        transition:
+            background .2s ease,
+            transform .2s ease,
+            opacity .2s ease;
+    }
+
+    .chat-input button:hover {
+        background: #eeeeee;
+
+        color: #000000;
+
+        transform: translateY(-1px);
+    }
+
+    .chat-input button:active {
+        transform: translateY(0);
+    }
+
+    .chat-input button:disabled {
+        opacity: .5;
+
+        cursor: not-allowed;
+
+        transform: none;
+    }
+
+    #loading {
+        position: fixed;
+
+        inset: 0;
+
+        z-index: 9999;
+
+        display: flex;
+
+        justify-content: center;
+        align-items: center;
+
+        background: #000000;
+
+        transition: opacity .8s ease;
+    }
+
+    #loading img {
+        width: 140px;
+        height: 140px;
+
+        object-fit: cover;
+
+        border-radius: 20px;
+
+        animation: float 2s ease-in-out infinite;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0);
+        }
+
+        50% {
+            transform: translateY(-12px);
+        }
+    }
+
+    @media (max-width: 768px) {
+
+        .chat-container {
+            width: 100%;
+            height: 100dvh;
+
+            border: none;
+            border-radius: 0;
+        }
+
+        .chat-header {
+            min-height: 60px;
+
+            padding: 8px 10px;
+
+            font-size: 14px;
+        }
+
+        .back-button {
+            left: 10px;
+
+            width: 38px;
+            height: 38px;
+
+            font-size: 21px;
+        }
+
+        #chat-box {
+            padding: 10px;
+        }
+
+        .msg {
+            max-width: 90%;
+
+            font-size: 13px;
+        }
+
+        .chat-input {
+            padding: 10px;
+        }
+    }
+
+    @media (max-width: 420px) {
+
+        .chat-input button {
+            width: 45px;
+
+            padding: 10px;
+
+            font-size: 0;
+        }
+
+        .chat-input button::after {
+            content: "➤";
+
+            font-size: 18px;
+        }
+    }
+
+</style>
+
+</head>
+
+<body>
+
+<div id="loading">
+
+    <img
+        src="/logo_white.png"
+        alt="PrivLines AI"
+    >
+
+</div>
+
+
+<div class="background"></div>
+
+
+<div class="chat-container">
+
+    <div class="chat-header">
+
+        <button
+            class="back-button"
+            type="button"
+            onclick="goBack()"
+            aria-label="Zurück"
+            title="Zurück"
+        >
+            ←
+        </button>
+
+        PrivLines AI
+
+    </div>
+
+
+    <div id="chat-box"></div>
+
+
+    <div class="chat-input">
+
+        <input
+            id="userInput"
+            type="text"
+            placeholder="Schreibe eine Nachricht..."
+            autocomplete="off"
+        >
+
+        <button
+            id="sendButton"
+            type="button"
+        >
+            Senden
+        </button>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /* =========================================
+       ZURÜCK
+    ========================================= */
+
+    function goBack() {
+
+        if (window.history.length > 1) {
+
+            window.history.back();
+
+        } else {
+
+            window.location.href = "/chat.html";
+
+        }
+
+    }
+
+
+    /* =========================================
+       ELEMENTE
+    ========================================= */
+
+    const chatBox =
+        document.getElementById("chat-box");
+
+    const userInput =
+        document.getElementById("userInput");
+
+    const sendButton =
+        document.getElementById("sendButton");
+
+
+    /* =========================================
+       NACHRICHT HINZUFÜGEN
+    ========================================= */
+
+    function addMessage(text, type) {
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "msg " + type;
+
+        div.innerText =
+            String(text ?? "");
+
+        chatBox.appendChild(div);
+
+        scrollChat();
+
+        return div;
+
+    }
+
+
+    /* =========================================
+       CHAT NACH UNTEN
+    ========================================= */
+
+    function scrollChat() {
+
+        requestAnimationFrame(() => {
+
+            chatBox.scrollTop =
+                chatBox.scrollHeight;
+
+        });
+
+    }
+
+
+    /* =========================================
+       BILD HINZUFÜGEN
+    ========================================= */
+
+    function addImageMessage(imageUrl) {
+
+        if (!imageUrl) {
+            throw new Error(
+                "Keine Bild-URL erhalten."
+            );
+        }
+
+        const div =
+            document.createElement("div");
+
+        div.className =
+            "msg ai image-message";
+
+
+        const img =
+            document.createElement("img");
+
+        img.src =
+            imageUrl;
+
+        img.alt =
+            "Von PrivLines AI generiertes Bild";
+
+        img.loading =
+            "lazy";
+
+
+        img.addEventListener(
+            "click",
+            () => {
+
+                window.open(
+                    imageUrl,
+                    "_blank",
+                    "noopener,noreferrer"
+                );
+
+            }
+        );
+
+
+        div.appendChild(img);
+
+        chatBox.appendChild(div);
+
+        scrollChat();
+
+    }
+
+
+    /* =========================================
+       JSON SICHER LESEN
+    ========================================= */
+
+    async function readJsonResponse(response) {
+
+        const contentType =
+            response.headers.get("content-type") || "";
+
+        const raw = await response.text();
+
+        if (!raw.trim()) {
+            if (!response.ok) {
+                throw new Error(`Serverfehler (${response.status})`);
+            }
+            return {};
+        }
+
+        if (contentType.toLowerCase().includes("application/json")) {
+            try {
+                return JSON.parse(raw);
+            } catch (error) {
+                console.error("Ungültiges JSON vom Server:", raw);
+                throw new Error("Der Server hat ungültiges JSON zurückgegeben.");
+            }
+        }
+
+        // Manche Express-Fehlerseiten kommen als HTML/Text zurück.
+        if (!response.ok) {
+            const clean = raw.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+            throw new Error(clean || `Serverfehler (${response.status})`);
+        }
+
+        // Auch bei falschem Content-Type versuchen wir JSON.
+        try {
+            return JSON.parse(raw);
+        } catch {
+            return { answer: raw };
+        }
+    }
+
+
+    /* =========================================
+       TEXT AI
+    ========================================= */
+
+    async function getAIResponse(message) {
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 120000);
+
+        try {
+            const response = await fetch(
+                "/api/ai",
+                {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Accept": "application/json",
+                        "Cache-Control": "no-cache"
+                    },
+                    credentials: "include",
+                    cache: "no-store",
+                    signal: controller.signal,
+                    body: JSON.stringify({
+                        message: String(message).trim()
+                    })
+                }
+            );
+
+            const data = await readJsonResponse(response);
+
+            if (!response.ok || data?.success === false || data?.ok === false) {
+                throw new Error(
+                    data?.error ||
+                    data?.message ||
+                    data?.answer ||
+                    `PrivLines AI Fehler (${response.status})`
+                );
+            }
+
+            const reply =
+                data?.answer ??
+                data?.reply ??
+                data?.response ??
+                data?.text ??
+                (typeof data?.result === "string" ? data.result : null) ??
+                data?.output ??
+                data?.message ??
+                data?.data?.answer ??
+                data?.data?.reply ??
+                data?.data?.response ??
+                data?.result?.answer ??
+                data?.result?.reply ??
+                data?.result?.response;
+
+            if (typeof reply !== "string" || !reply.trim()) {
+                console.error("Unerwartete AI-Antwort:", data);
+                throw new Error("Der Server hat keine gültige Textantwort zurückgegeben.");
+            }
+
+            return reply.trim();
+
+        } catch (error) {
+            if (error?.name === "AbortError") {
+                throw new Error("PrivLines AI braucht gerade zu lange. Bitte versuche es erneut.");
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeout);
+        }
+    }
+
+
+    /* =========================================
+       BILD AI
+    ========================================= */
+
+    async function generateImage(prompt) {
+
+        const response =
+            await fetch(
+                "/api/ai/image",
+                {
+                    method: "POST",
+
+                    headers: {
+                        "Content-Type":
+                            "application/json",
+
+                        "Accept":
+                            "application/json,image/*"
+                    },
+
+                    credentials:
+                        "include",
+
+                    body:
+                        JSON.stringify({
+                            prompt: prompt
+                        })
+                }
+            );
+
+
+        const contentType =
+            response.headers.get("content-type") || "";
+        if (!response.ok) {
+            const errorData = await readJsonResponse(response);
+            throw new Error(
+                errorData?.error ||
+                errorData?.message ||
+                "Bildgenerierungsfehler (" + response.status + ")"
+            );
+        }
+
+
+        /* -------------------------------------
+           FALL 1:
+           SERVER GIBT DIREKT EIN BILD ZURÜCK
+        ------------------------------------- */
+
+        if (
+            contentType.toLowerCase().startsWith("image/")
+        ) {
+
+            const blob =
+                await response.blob();
+
+            const imageUrl =
+                URL.createObjectURL(blob);
+
+            addImageMessage(imageUrl);
+
+            return;
+
+        }
+
+
+        /* -------------------------------------
+           FALL 2:
+           SERVER GIBT JSON ZURÜCK
+        ------------------------------------- */
+
+        const data =
+            await readJsonResponse(response);
+
+
+        if (!response.ok) {
+
+            throw new Error(
+                data?.error ||
+                data?.message ||
+                `Bildgenerierungsfehler (${response.status})`
+            );
+
+        }
+
+
+        /*
+         * Unterstützt:
+         *
+         * imageUrl
+         * image
+         * url
+         * image_url
+         * base64
+         * data
+         */
+
+        if (!response.ok || data?.success === false || data?.ok === false) {
+            throw new Error(
+                data?.error ||
+                data?.message ||
+                `Bildgenerierungsfehler (${response.status})`
+            );
+        }
+
+        let imageUrl =
+            data?.imageUrl ??
+            data?.image_url ??
+            data?.url ??
+            data?.image ??
+            data?.data?.imageUrl ??
+            data?.data?.image_url ??
+            data?.data?.url ??
+            data?.data?.image ??
+            data?.result?.imageUrl ??
+            data?.result?.image_url ??
+            data?.result?.url ??
+            data?.result?.image ??
+            null;
+
+
+        /* -------------------------------------
+           BASE64 BILD
+        ------------------------------------- */
+
+        if (
+            !imageUrl &&
+            typeof data?.base64 === "string"
+        ) {
+
+            imageUrl =
+                data.base64.startsWith("data:")
+                    ? data.base64
+                    : "data:image/png;base64," +
+                      data.base64;
+
+        }
+
+
+        if (
+            !imageUrl &&
+            typeof data?.data === "string"
+        ) {
+
+            imageUrl =
+                data.data.startsWith("data:")
+                    ? data.data
+                    : "data:image/png;base64," +
+                      data.data;
+
+        }
+
+
+        /*
+         * Cloudflare/Backend kann Bilddaten
+         * auch verschachtelt zurückgeben.
+         */
+
+        if (
+            !imageUrl &&
+            data?.result
+        ) {
+
+            if (
+                typeof data.result === "string"
+            ) {
+
+                imageUrl =
+                    data.result;
+
+            } else if (
+                typeof data.result?.imageUrl === "string"
+            ) {
+
+                imageUrl =
+                    data.result.imageUrl;
+
+            } else if (
+                typeof data.result?.base64 === "string"
+            ) {
+
+                imageUrl =
+                    data.result.base64.startsWith("data:")
+                        ? data.result.base64
+                        : "data:image/png;base64," +
+                          data.result.base64;
+
+            }
+
+        }
+
+
+        if (
+            typeof imageUrl !== "string" ||
+            !imageUrl.trim()
+        ) {
+
+            console.error(
+                "Unerwartete Bildantwort:",
+                data
+            );
+
+            throw new Error(
+                "Der Server hat kein gültiges Bild zurückgegeben."
+            );
+
+        }
+
+
+        addImageMessage(
+            imageUrl.trim()
+        );
+
+    }
+
+
+    /* =========================================
+       NACHRICHT SENDEN
+    ========================================= */
+
+    async function sendMessage() {
+
+        const text =
+            userInput.value.trim();
+
+
+        if (!text) {
+            return;
+        }
+
+
+        userInput.disabled =
+            true;
+
+        sendButton.disabled =
+            true;
+
+
+        addMessage(
+            text,
+            "user"
+        );
+
+
+        userInput.value =
+            "";
+
+
+        /* -------------------------------------
+           BILD
+        ------------------------------------- */
+
+        if (wantsImage(text)) {
+
+            const loadingMessage =
+                addMessage(
+                    "🎨 PrivLines AI erstellt dein Bild...",
+                    "ai"
+                );
+
+
+            try {
+
+                await generateImage(text);
+
+                loadingMessage.remove();
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "PrivLines AI Bildfehler:",
+                    error
+                );
+
+
+                loadingMessage.innerText =
+                    "❌ PrivLines AI konnte das Bild nicht erstellen.\n\n" +
+                    (
+                        error?.message ||
+                        "Unbekannter Fehler"
+                    );
+
+            }
+
+        }
+
+
+        /* -------------------------------------
+           TEXT
+        ------------------------------------- */
+
+        else {
+
+            const thinking =
+                addMessage(
+                    "⏳ PrivLines AI denkt...",
+                    "ai"
+                );
+
+
+            try {
+
+                const reply =
+                    await getAIResponse(text);
+
+
+                thinking.remove();
+
+
+                addMessage(
+                    reply,
+                    "ai"
+                );
+
+            }
+
+            catch (error) {
+
+                console.error(
+                    "PrivLines AI Textfehler:",
+                    error
+                );
+
+
+                thinking.innerText =
+                    "❌ PrivLines AI konnte gerade nicht antworten.\n\n" +
+                    (
+                        error?.message ||
+                        "Unbekannter Fehler"
+                    );
+
+            }
+
+        }
+
+
+        userInput.disabled =
+            false;
+
+        sendButton.disabled =
+            false;
+
+        userInput.focus();
+
+    }
+
+
+    /* =========================================
+       BILDERKENNUNG
+    ========================================= */
+
+    function wantsImage(text) {
+
+        const t =
+            text
+                .toLowerCase()
+                .trim();
+
+
+        const keywords = [
+
+            "erstelle ein bild",
+            "erstelle mir ein bild",
+            "generiere ein bild",
+            "generiere mir ein bild",
+            "mach ein bild",
+            "mach mir ein bild",
+            "zeichne ein bild",
+            "zeichne mir ein bild",
+            "erzeuge ein bild",
+            "erstelle eine grafik",
+            "generiere eine grafik",
+            "generiere ein logo",
+            "erstelle ein logo",
+            "mach ein logo",
+            "mach mir ein logo",
+            "erstelle einen wallpaper",
+            "erstelle ein wallpaper",
+            "generiere ein wallpaper",
+            "generiere einen wallpaper",
+            "erstelle einen hintergrund",
+            "erstelle ein hintergrundbild",
+            "generiere einen hintergrund",
+            "generiere ein hintergrundbild",
+            "erstelle ein portrait",
+            "erstelle ein porträt",
+            "generiere ein portrait",
+            "generiere ein porträt",
+            "zeichne",
+            "male",
+            "render",
+            "generiere ein anime",
+            "erstelle eine illustration",
+            "generiere eine illustration"
+
+        ];
+
+
+        return keywords.some(
+            keyword =>
+                t.includes(keyword)
+        );
+
+    }
+
+
+    /* =========================================
+       ENTER
+    ========================================= */
+
+    userInput.addEventListener(
+        "keydown",
+        function(event) {
+
+            if (
+                event.key === "Enter" &&
+                !event.shiftKey
+            ) {
+
+                event.preventDefault();
+
+                if (!sendButton.disabled) {
+                    sendMessage();
+                }
+            }
+        }
+    );
+
+    // Auch Klicks/Taps funktionieren zuverlässig ohne Inline-Abhängigkeit.
+    sendButton.addEventListener("click", sendMessage);
+
+    // Bei mobilen Browsern Tastatur nicht unnötig blockieren.
+    userInput.addEventListener("input", () => {
+        sendButton.disabled = userInput.disabled || !userInput.value.trim();
+    });
+
+
+    window.addEventListener("unhandledrejection", event => {
+        console.error("Nicht abgefangener PrivLines AI Fehler:", event.reason);
+    });
+
+    addMessage(
+        "Hallo! Ich bin PrivLines AI, dein persönlicher Assistent im PrivLines Messenger. Wie kann ich dir heute helfen? Hast du eine konkrete Frage oder brauchst du bei etwas Unterstützung?",
+        "ai"
+    );
+
+
+    /* =========================================
+       LOADING SCREEN
+    ========================================= */
+
+    const loading =
+        document.getElementById(
+            "loading"
+        );
+
+
+    function removeLoadingScreen() {
+
+        if (!loading) {
+            return;
+        }
+
+
+        loading.style.opacity =
+            "0";
+
+
+        setTimeout(
+            () => {
+
+                if (loading) {
+                    loading.remove();
+                }
+
+                userInput.focus();
+        sendButton.disabled = !userInput.value.trim();
+
+            },
+            800
+        );
+
+    }
+
+
+    /*
+     * Loading Screen etwas länger anzeigen,
+     * damit das Logo sauber geladen wird.
+     */
+
+    setTimeout(
+        removeLoadingScreen,
+        1200
+    );
+
+
+</script>
+
+</body>
+
+</html>

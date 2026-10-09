@@ -1,0 +1,4720 @@
+<!DOCTYPE html>
+
+<html lang="de">
+
+<head>
+
+<meta charset="UTF-8">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>PrivLines</title>
+
+<link rel="manifest" href="/manifest.webmanifest">
+    <link rel="icon" type="image/png" href="/logo_black.png">
+
+<script src="/socket.io/socket.io.js"></script>
+
+<style>
+
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:Arial, Helvetica, sans-serif;
+}
+
+html,
+body{
+    width:100%;
+    height:100%;
+}
+
+body{
+    min-height:100vh;
+    overflow:hidden;
+    color:#ffffff;
+    background:#000000;
+    -webkit-tap-highlight-color:transparent;
+}
+
+/* =========================================================
+   TIEF SCHWARZER HINTERGRUND
+   ========================================================= */
+
+.background{
+    position:fixed;
+    inset:0;
+    z-index:0;
+    background:#000000;
+}
+
+/* =========================================================
+   GLASS EFFECT
+   ========================================================= */
+
+.glass{
+    background:rgba(255,255,255,.06);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.80),
+        inset 0 0 20px rgba(255,255,255,.025);
+}
+
+/* =========================================================
+   APP
+   ========================================================= */
+
+.app{
+    position:relative;
+    z-index:2;
+    display:grid;
+    grid-template-columns:
+        minmax(285px,330px)
+        minmax(0,1fr);
+    gap:14px;
+    width:100%;
+    height:100vh;
+    padding:14px;
+}
+
+/* =========================================================
+   SIDEBAR
+   ========================================================= */
+
+.sidebar{
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    background:rgba(8,8,8,.92);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:22px;
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.85),
+        inset 0 0 20px rgba(255,255,255,.025);
+    color:#ffffff;
+}
+
+/* =========================================================
+   SIDEBAR HEADER
+   ========================================================= */
+
+.sidebar-header{
+    position:relative;
+    padding:20px 18px 17px;
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.025);
+}
+
+.header-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+}
+
+.logo{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    margin-bottom:5px;
+    color:#ffffff;
+    font-size:20px;
+    font-weight:800;
+}
+
+.logo::first-letter{
+    color:#ffffff;
+}
+
+.logged-in{
+    color:#aaa;
+    font-size:12px;
+}
+
+.logged-in strong{
+    color:#ffffff;
+    font-weight:bold;
+}
+
+/* =========================================================
+   BUTTONS
+   ========================================================= */
+
+button{
+    border:none;
+    cursor:pointer;
+    color:#000000;
+    transition:
+        background .20s ease,
+        border-color .20s ease,
+        transform .20s ease,
+        box-shadow .20s ease,
+        opacity .20s ease;
+}
+
+button:disabled{
+    opacity:.45;
+    cursor:not-allowed;
+    transform:none !important;
+}
+
+/* =========================================================
+   LOGOUT BUTTON
+   ========================================================= */
+
+.logout-button{
+    padding:9px 12px;
+    border:
+        1px solid #ffffff;
+    border-radius:12px;
+    background:#ffffff;
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+    backdrop-filter:blur(10px);
+}
+
+.logout-button:hover{
+    background:#eeeeee;
+    border-color:#ffffff;
+    transform:scale(1.04);
+}
+
+/* =========================================================
+   SEARCH
+   ========================================================= */
+
+.search-container{
+    padding:13px;
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+}
+
+.search{
+    display:flex;
+    gap:7px;
+}
+
+.search input{
+    min-width:0;
+    border:
+        1px solid rgba(255,255,255,.15);
+    outline:none;
+    background:rgba(255,255,255,.06);
+    color:#ffffff;
+    box-shadow:
+        inset 0 0 15px rgba(255,255,255,.02);
+    backdrop-filter:blur(10px);
+}
+
+.search input{
+    flex:1;
+    padding:10px 12px;
+    border-radius:12px;
+    font-size:13px;
+}
+
+.search input::placeholder,
+#messageInput::placeholder{
+    color:#888;
+}
+
+.search input:focus{
+    border-color:#ffffff;
+    box-shadow:
+        0 0 0 3px rgba(255,255,255,.10);
+}
+
+/* =========================================================
+   WEISSE BUTTONS
+   ========================================================= */
+
+.search > button,
+#sendButton{
+    border:
+        1px solid #ffffff;
+    border-radius:12px;
+    background:#ffffff;
+    color:#000000;
+    font-weight:800;
+    box-shadow:
+        0 5px 20px rgba(0,0,0,.45);
+}
+
+.search > button{
+    padding:0 14px;
+    font-size:12px;
+}
+
+.search > button:hover,
+#sendButton:hover{
+    background:#eeeeee;
+    border-color:#ffffff;
+    transform:translateY(-2px) scale(1.03);
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.60);
+}
+
+#searchResult{
+    margin-top:8px;
+}
+
+.user-directory-tabs{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
+
+.user-directory-tab{
+    flex:1;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    padding:9px 12px;
+    background:rgba(255,255,255,.05);
+    color:rgba(255,255,255,.72);
+    font-weight:800;
+    cursor:pointer;
+    transition:.18s ease;
+}
+
+.user-directory-tab:hover{
+    background:rgba(255,255,255,.09);
+    color:#fff;
+}
+
+.user-directory-tab.active{
+    background:rgba(125,249,255,.14);
+    border-color:rgba(125,249,255,.42);
+    color:#7df9ff;
+}
+
+.all-users-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
+
+.all-user-card{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:13px;
+    background:rgba(255,255,255,.05);
+    backdrop-filter:blur(12px);
+}
+
+.all-user-avatar{
+    width:38px;
+    height:38px;
+    min-width:38px;
+    border-radius:50%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:rgba(255,255,255,.10);
+    font-weight:900;
+}
+
+.all-user-avatar img{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+}
+
+.all-user-info{
+    min-width:0;
+    flex:1;
+}
+
+.all-user-name{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    font-weight:800;
+}
+
+.all-user-username{
+    margin-top:2px;
+    color:#888;
+    font-size:11px;
+}
+
+.all-user-action{
+    flex-shrink:0;
+}
+
+.all-users-loading,
+.all-users-empty{
+    padding:14px;
+    text-align:center;
+    color:rgba(255,255,255,.62);
+    font-size:13px;
+}
+
+.search-result{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+    padding:10px;
+    border:
+        1px solid rgba(255,255,255,.13);
+    border-radius:13px;
+    background:rgba(255,255,255,.05);
+    backdrop-filter:blur(12px);
+}
+
+.search-result-name{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.search-result button{
+    padding:7px 10px;
+    border:
+        1px solid #ffffff;
+    border-radius:10px;
+    background:#ffffff;
+    color:#000000;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.search-result button:hover{
+    background:#eeeeee;
+    border-color:#ffffff;
+    transform:scale(1.04);
+}
+
+.search-error{
+    padding:5px 2px;
+    color:#ff9999;
+    font-size:12px;
+}
+
+/* =========================================================
+   SECTIONS
+   ========================================================= */
+
+.section{
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+}
+
+.section-title{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    padding:13px 15px 9px;
+    color:#bbb;
+    font-size:11px;
+    font-weight:bold;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+}
+
+.badge,
+.unread-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:20px;
+    height:20px;
+    padding:0 6px;
+    border-radius:999px;
+    background:#ffffff;
+    color:#000000;
+    font-size:10px;
+    font-weight:900;
+    box-shadow:
+        0 3px 12px rgba(0,0,0,.55);
+}
+
+/* =========================================================
+   FRIEND REQUESTS
+   ========================================================= */
+
+.request{
+    margin:0 11px 9px;
+    padding:11px;
+    border:
+        1px solid rgba(255,255,255,.13);
+    border-radius:14px;
+    background:rgba(255,255,255,.05);
+    backdrop-filter:blur(12px);
+}
+
+.request-name{
+    margin-bottom:9px;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.request-buttons{
+    display:flex;
+    gap:7px;
+}
+
+.request-buttons button{
+    flex:1;
+    padding:8px;
+    border:
+        1px solid rgba(255,255,255,.15);
+    border-radius:10px;
+    font-size:12px;
+}
+
+.accept-button{
+    background:#ffffff;
+    color:#000000;
+    border-color:#ffffff !important;
+}
+
+.accept-button:hover{
+    background:#eeeeee;
+}
+
+.reject-button{
+    background:rgba(255,0,0,.10);
+    color:#ff9999;
+}
+
+.reject-button:hover{
+    background:rgba(255,0,0,.22);
+}
+
+/* =========================================================
+   FRIENDS
+   ========================================================= */
+
+.friends-section{
+    min-height:0;
+    flex:1 1 auto;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+}
+
+#friendsList{
+    min-height:0;
+    flex:1 1 auto;
+    overflow-y:auto;
+    overflow-x:hidden;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.25) transparent;
+}
+
+#friendsList::-webkit-scrollbar{
+    width:6px;
+}
+
+#friendsList::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+#friendsList::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.25);
+    border-radius:999px;
+}
+
+.friend{
+    position:relative;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    min-height:62px;
+    padding:9px 14px;
+    cursor:pointer;
+    border-left:3px solid transparent;
+    transition:
+        background .20s ease,
+        border-color .20s ease,
+        transform .20s ease;
+}
+
+.friend:hover{
+    background:rgba(255,255,255,.055);
+}
+
+.friend.active{
+    background:
+        rgba(255,255,255,.10);
+    border-left-color:#ffffff;
+}
+
+.friend:hover{
+    transform:translateX(2px);
+}
+
+.avatar,
+.chat-avatar,
+.call-avatar{
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:50%;
+    background:#ffffff;
+    color:#000000;
+    font-weight:900;
+    box-shadow:
+        0 5px 20px rgba(0,0,0,.55);
+}
+
+.avatar{
+    width:40px;
+    height:40px;
+    font-size:13px;
+}
+
+.friend-info{
+    min-width:0;
+    flex:1;
+}
+
+.friend-name{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    color:#ffffff;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.friend-status{
+    margin-top:3px;
+    color:#ffffff;
+    font-size:11px;
+}
+
+.empty-list{
+    padding:18px 12px;
+    color:#777;
+    text-align:center;
+    font-size:12px;
+}
+
+/* =========================================================
+   AI REITER
+   ========================================================= */
+
+.ai-tab{
+    flex-shrink:0;
+    padding:10px 11px;
+    border-top:
+        1px solid rgba(255,255,255,.10);
+    border-bottom:
+        1px solid rgba(255,255,255,.10);
+    background:
+        rgba(255,255,255,.025);
+}
+
+.ai-tab-button{
+    display:flex;
+    align-items:center;
+    gap:11px;
+    width:100%;
+    min-height:48px;
+    padding:9px 13px;
+    border:
+        1px solid rgba(255,255,255,.25);
+    border-radius:13px;
+    background:
+        rgba(255,255,255,.07);
+    color:#ffffff;
+    text-decoration:none;
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+    transition:
+        background .20s ease,
+        border-color .20s ease,
+        transform .20s ease,
+        box-shadow .20s ease;
+}
+
+.ai-tab-button:hover{
+    background:
+        rgba(255,255,255,.16);
+    border-color:
+        rgba(255,255,255,.55);
+    transform:
+        translateX(2px);
+    box-shadow:
+        0 6px 20px
+        rgba(0,0,0,.50);
+}
+
+.ai-tab-icon{
+    width:32px;
+    height:32px;
+    flex:0 0 auto;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:10px;
+    background:
+        #ffffff;
+    color:#000000;
+    font-size:17px;
+    box-shadow:
+        0 5px 15px
+        rgba(0,0,0,.50);
+}
+
+.ai-tab-text{
+    font-size:13px;
+    font-weight:800;
+    color:#ffffff;
+}
+
+/* =========================================================
+   STATUS
+   ========================================================= */
+
+.status{
+    padding:10px 14px;
+    border-top:
+        1px solid rgba(255,255,255,.10);
+    background:rgba(0,0,0,.55);
+    color:#ffffff;
+    font-size:11px;
+}
+
+/* =========================================================
+   CHAT
+   ========================================================= */
+
+.chat{
+    position:relative;
+    min-width:0;
+    min-height:0;
+    display:flex;
+    flex-direction:column;
+    overflow:hidden;
+    background:rgba(5,5,5,.94);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+    border:
+        1px solid rgba(255,255,255,.13);
+    border-radius:22px;
+    box-shadow:
+        0 20px 60px rgba(0,0,0,.85),
+        inset 0 0 20px rgba(255,255,255,.025);
+}
+
+/* =========================================================
+   CHAT HEADER
+   ========================================================= */
+
+.chat-header{
+    z-index:2;
+    min-height:70px;
+    display:flex;
+    align-items:center;
+    padding:11px 18px;
+    background:rgba(255,255,255,.025);
+    border-bottom:
+        1px solid rgba(255,255,255,.12);
+    backdrop-filter:blur(15px);
+}
+
+.chat-user{
+    width:100%;
+    min-width:0;
+    display:flex;
+    align-items:center;
+    gap:11px;
+}
+
+.chat-user > div:nth-child(2){
+    min-width:0;
+}
+
+.chat-avatar{
+    width:42px;
+    height:42px;
+    font-size:14px;
+}
+
+#chatPartner{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:15px;
+    font-weight:bold;
+}
+
+.chat-subtitle{
+    margin-top:2px;
+    color:#ffffff;
+    font-size:11px;
+}
+
+.call-buttons{
+    display:flex;
+    gap:6px;
+    margin-left:auto;
+}
+
+.call-button{
+    width:40px;
+    height:40px;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;
+    border:
+        1px solid rgba(255,255,255,.15);
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    color:#ffffff;
+    font-size:17px;
+    backdrop-filter:blur(10px);
+}
+
+.call-button:hover:not(:disabled){
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.50);
+    color:#ffffff;
+    transform:translateY(-2px) scale(1.04);
+}
+
+/* =========================================================
+   MESSAGES
+   ========================================================= */
+
+#messages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:
+        20px
+        clamp(12px,3vw,34px);
+    scroll-behavior:smooth;
+    background:rgba(0,0,0,.45);
+}
+
+.empty-chat{
+    margin:auto;
+    max-width:300px;
+    color:#777;
+    text-align:center;
+    font-size:13px;
+    line-height:1.55;
+}
+
+.empty-chat > div:first-child{
+    opacity:.65;
+}
+
+.message{
+    max-width:min(68%,650px);
+    align-self:flex-start;
+    padding:9px 12px;
+    border:
+        1px solid rgba(255,255,255,.12);
+    border-radius:
+        16px 16px 16px 5px;
+    background:rgba(255,255,255,.075);
+    color:#ffffff;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.55);
+    backdrop-filter:blur(12px);
+    overflow-wrap:anywhere;
+}
+
+.message.mine{
+    align-self:flex-end;
+    border-color:
+        rgba(255,255,255,.70);
+    border-radius:
+        16px 16px 5px 16px;
+    background:
+        #ffffff;
+    color:#000000;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.60);
+}
+
+.message-user{
+    margin-bottom:3px;
+    color:#999;
+    font-size:10px;
+    font-weight:bold;
+}
+
+.message.mine .message-user{
+    color:rgba(0,0,0,.65);
+}
+
+.message-text{
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.message-image,
+.message-video{
+    display:block;
+    max-width:min(360px,70vw);
+    max-height:430px;
+    margin-top:4px;
+    border-radius:12px;
+    background:#000000;
+    box-shadow:
+        0 8px 25px rgba(0,0,0,.70);
+}
+
+.message-image{
+    width:auto;
+    height:auto;
+    cursor:pointer;
+    object-fit:contain;
+}
+
+.message-video{
+    width:100%;
+    height:auto;
+}
+
+/* =========================================================
+   SCHULKANAL CHAT
+   ========================================================= */
+
+#schoolChannelView{
+    position:absolute;
+    top:0;
+    right:0;
+    bottom:0;
+    left:0;
+    width:100%;
+    height:100%;
+    z-index:30;
+    display:none;
+    flex-direction:column;
+    background:rgba(5,5,5,.98);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+}
+
+#schoolChannelView.visible{
+    display:flex;
+    pointer-events:auto;
+}
+
+.school-channel-header{
+    min-height:70px;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:11px;
+    padding:11px 18px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.025);
+}
+
+.school-channel-back{
+    width:40px;
+    height:40px;
+    flex-shrink:0;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+    font-size:24px;
+    cursor:pointer;
+}
+
+.school-channel-avatar{
+    width:42px;
+    height:42px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    flex-shrink:0;
+    border-radius:13px;
+    background:#fff;
+    color:#000;
+    font-size:20px;
+}
+
+.school-channel-title{
+    min-width:0;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:15px;
+    font-weight:800;
+}
+
+.school-channel-subtitle{
+    margin-top:2px;
+    color:rgba(255,255,255,.52);
+    font-size:11px;
+}
+
+#schoolChannelMessages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:20px clamp(12px,3vw,34px);
+    scroll-behavior:smooth;
+    background:rgba(0,0,0,.45);
+}
+
+.school-message{
+    max-width:min(72%,650px);
+    align-self:flex-start;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:16px 16px 16px 5px;
+    background:rgba(255,255,255,.075);
+    color:#fff;
+    overflow-wrap:anywhere;
+}
+
+.school-message.mine{
+    align-self:flex-end;
+    border-color:rgba(255,255,255,.70);
+    border-radius:16px 16px 5px 16px;
+    background:#fff;
+    color:#000;
+}
+
+.school-message-user{
+    margin-bottom:3px;
+    color:#aaa;
+    font-size:10px;
+    font-weight:800;
+}
+
+.school-message.mine .school-message-user{color:rgba(0,0,0,.60);}
+
+.school-message-text{
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.school-message-time{
+    margin-top:4px;
+    color:#777;
+    font-size:9px;
+    text-align:right;
+}
+
+.school-message.mine .school-message-time{color:rgba(0,0,0,.48);}
+
+.school-message-actions{
+    display:flex;
+    justify-content:flex-end;
+    gap:5px;
+    margin-top:5px;
+}
+
+.school-message-edit{
+    border:1px solid rgba(0,0,0,.12);
+    background:rgba(0,0,0,.07);
+    color:inherit;
+    border-radius:8px;
+    padding:4px 7px;
+    font-size:10px;
+    cursor:pointer;
+}
+
+.school-message:not(.mine) .school-message-actions{display:none;}
+.school-message-edit:hover{background:rgba(0,0,0,.14);}
+
+
+.school-channel-input-area{
+    flex-shrink:0;
+    display:flex;
+    gap:7px;
+    align-items:center;
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.70);
+}
+
+#schoolChannelInput{
+    flex:1;
+    min-width:0;
+    height:40px;
+    padding:0 13px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:12px;
+    outline:none;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+    font-size:13px;
+}
+
+#schoolChannelSend{
+    width:52px;
+    height:40px;
+    flex-shrink:0;
+    border:0;
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    font-size:18px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+#schoolChannelSend:disabled{opacity:.45;cursor:not-allowed;}
+
+.school-channel-empty{
+    margin:auto;
+    max-width:320px;
+    color:#777;
+    text-align:center;
+    font-size:13px;
+    line-height:1.5;
+}
+
+/* =========================================================
+   MESSAGE AREA
+   ========================================================= */
+
+.message-area{
+    z-index:2;
+    flex-shrink:0;
+    display:flex;
+    align-items:center;
+    gap:7px;
+    padding:10px;
+    border-top:
+        1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.70);
+    backdrop-filter:blur(15px);
+}
+
+#photoButton{
+    width:40px;
+    min-width:40px;
+    height:40px;
+    padding:0;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    border-radius: 15px;
+}
+
+#photoButton:hover:not(:disabled){
+    transform:scale(1.05);
+}
+
+/* =========================================================
+   NACHRICHTEN-EINGABE
+   ========================================================= */
+
+#messageInput{
+    flex:1;
+    min-width:0;
+    height:40px;
+    padding:0 13px;
+    border:none !important;
+    outline:none !important;
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    color:#ffffff;
+    box-shadow:none !important;
+    font-size:13px;
+    backdrop-filter:blur(10px);
+}
+
+#messageInput:focus{
+    border:none !important;
+    outline:none !important;
+    box-shadow:none !important;
+    background:rgba(255,255,255,.10);
+}
+
+#sendButton{
+    min-width:70px;
+    height:40px;
+    padding:0 13px;
+    font-size:12px;
+}
+
+/* =========================================================
+   NOTIFICATION
+   ========================================================= */
+
+.notification{
+    position:fixed;
+    right:20px;
+    bottom:20px;
+    z-index:9999;
+    width:min(350px,calc(100vw - 40px));
+    padding:14px;
+    border:
+        1px solid rgba(255,255,255,.40);
+    border-radius:16px;
+    background:rgba(8,8,8,.94);
+    backdrop-filter:blur(20px);
+    box-shadow:
+        0 20px 55px rgba(0,0,0,.85);
+    transform:translateY(140%);
+    transition:
+        transform .30s ease;
+}
+
+.notification.show{
+    transform:translateY(0);
+}
+
+.notification-title{
+    margin-bottom:3px;
+    color:#ffffff;
+    font-size:12px;
+    font-weight:bold;
+}
+
+.notification-text{
+    color:#ccc;
+    font-size:12px;
+    line-height:1.45;
+}
+
+/* =========================================================
+   SCROLLBAR
+   ========================================================= */
+
+*{
+    scrollbar-width:thin;
+    scrollbar-color:#555 transparent;
+}
+
+::-webkit-scrollbar{
+    width:6px;
+    height:6px;
+}
+
+::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.20);
+    border-radius:99px;
+}
+
+::-webkit-scrollbar-thumb:hover{
+    background:rgba(255,255,255,.60);
+}
+
+/* =========================================================
+   MOBILE BACK
+   ========================================================= */
+
+.mobile-back-button{
+    display:none;
+    flex:0 0 auto;
+    width:38px;
+    height:38px;
+    margin:0;
+    padding:0;
+    align-items:center;
+    justify-content:center;
+    border:
+        1px solid rgba(255,255,255,.15);
+    border-radius:11px;
+    background:rgba(255,255,255,.07);
+    color:#ffffff;
+    font-size:22px;
+}
+
+.mobile-back-button:hover{
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.50);
+    color:#ffffff;
+}
+
+/* =========================================================
+   CALL UI
+   ========================================================= */
+
+.call-overlay{
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(0,0,0,.88);
+    backdrop-filter:blur(20px);
+    -webkit-backdrop-filter:blur(20px);
+}
+
+.call-overlay.visible{
+    display:flex;
+}
+
+.call-card{
+    width:min(92vw,400px);
+    padding:30px 22px 22px;
+    border:
+        1px solid rgba(255,255,255,.16);
+    border-radius:24px;
+    background:rgba(8,8,8,.96);
+    backdrop-filter:blur(25px);
+    color:#ffffff;
+    text-align:center;
+    box-shadow:
+        0 30px 90px rgba(0,0,0,.90);
+}
+
+.call-avatar{
+    width:80px;
+    height:80px;
+    margin:
+        0 auto 14px;
+    font-size:28px;
+}
+
+.call-name{
+    font-size:21px;
+    font-weight:bold;
+}
+
+.call-state{
+    margin-top:6px;
+    color:#ffffff;
+    font-size:12px;
+}
+
+.call-actions{
+    display:flex;
+    justify-content:center;
+    gap:9px;
+    flex-wrap:wrap;
+    margin-top:20px;
+}
+
+.call-actions button{
+    min-height:42px;
+    padding:0 17px;
+    border:
+        1px solid rgba(255,255,255,.15);
+    border-radius:11px;
+    font-size:12px;
+    font-weight:bold;
+    backdrop-filter:blur(10px);
+}
+
+.call-accept{
+    background:#ffffff;
+    color:#000000;
+    border-color:#ffffff !important;
+}
+
+.call-accept:hover{
+    background:#eeeeee;
+}
+
+.call-reject{
+    background:rgba(255,0,0,.15);
+    color:#ff9999;
+}
+
+.call-cancel{
+    background:#ffffff;
+    color:#000000;
+}
+
+.call-cancel:hover{
+    background:#eeeeee;
+    border-color:#ffffff;
+    color:#000000;
+}
+
+/* =========================================================
+   VIDEO CALL
+   ========================================================= */
+
+.call-videos{
+    position:fixed;
+    inset:0;
+    z-index:9998;
+    display:none;
+    background:#000000;
+}
+
+.call-videos.visible{
+    display:block;
+}
+
+.call-remote-video{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    background:#000000;
+}
+
+.call-local-video{
+    position:absolute;
+    right:clamp(12px,2vw,24px);
+    bottom:92px;
+    width:min(30vw,230px);
+    max-width:38vw;
+    aspect-ratio:16/9;
+    object-fit:cover;
+    border:
+        1px solid rgba(255,255,255,.20);
+    border-radius:15px;
+    background:#000000;
+    box-shadow:
+        0 14px 40px rgba(0,0,0,.80);
+}
+
+.call-controls{
+    position:absolute;
+    left:50%;
+    bottom:max(16px,env(safe-area-inset-bottom));
+    transform:translateX(-50%);
+    display:flex;
+    gap:8px;
+    padding:8px;
+    border:
+        1px solid rgba(255,255,255,.13);
+    border-radius:17px;
+    background:rgba(5,5,5,.88);
+    backdrop-filter:blur(20px);
+}
+
+.call-control{
+    width:47px;
+    height:47px;
+    padding:0;
+    border:
+        1px solid rgba(255,255,255,.12);
+    border-radius:50%;
+    background:rgba(255,255,255,.08);
+    color:#ffffff;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.call-control:hover{
+    transform:scale(1.06);
+    background:rgba(255,255,255,.22);
+    border-color:rgba(255,255,255,.45);
+}
+
+.call-control.muted{
+    opacity:.5;
+}
+
+.call-control.end{
+    background:#d94355;
+    color:#ffffff;
+}
+
+/* =========================================================
+   RESPONSIVE
+   ========================================================= */
+
+@media(max-width:900px){
+
+    .app{
+        grid-template-columns:
+            270px minmax(0,1fr);
+        gap:9px;
+        padding:9px;
+    }
+
+    .message{
+        max-width:76%;
+    }
+
+}
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media(max-width:650px){
+
+    html,
+    body{
+        width:100%;
+        height:100%;
+        overflow:hidden;
+    }
+
+    .app{
+        position:fixed;
+        inset:0;
+        width:100vw;
+        height:100dvh;
+        display:block;
+        padding:0;
+        overflow:hidden;
+    }
+
+    .sidebar,
+    .chat{
+        position:absolute;
+        top:0;
+        right:0;
+        bottom:0;
+        left:0;
+        width:100%;
+        height:100%;
+        min-width:0;
+        max-width:none;
+        min-height:0;
+        margin:0;
+        border:0;
+        border-radius:0;
+        overflow:hidden;
+        transition:
+            transform .25s ease,
+            opacity .20s ease;
+    }
+
+    .sidebar{
+        z-index:2;
+        display:flex;
+        transform:translate3d(0,0,0);
+        opacity:1;
+        pointer-events:auto;
+        will-change:transform;
+    }
+
+    .sidebar.mobile-hidden{
+        transform:translate3d(-100%,0,0);
+        opacity:0;
+        pointer-events:none;
+    }
+
+    .chat{
+        z-index:3;
+        display:flex;
+        transform:translate3d(100%,0,0);
+        opacity:1;
+        pointer-events:none;
+        will-change:transform;
+    }
+
+    .chat.mobile-visible{
+        display:flex;
+        transform:translate3d(0,0,0);
+        opacity:1;
+        pointer-events:auto;
+    }
+
+    /* Schulkanal muss auf dem Handy den Chat-Screen übernehmen.
+       Der normale .chat liegt sonst weiterhin außerhalb des Bildschirms
+       und hat pointer-events:none. */
+    .chat.school-channel-open{
+        transform:translate3d(0,0,0) !important;
+        opacity:1 !important;
+        pointer-events:auto !important;
+    }
+
+    #schoolChannelView.visible{
+        pointer-events:auto;
+    }
+
+    .mobile-back-button{
+        display:inline-flex;
+    }
+
+    .sidebar-header{
+        padding:17px 15px 14px;
+    }
+
+    .search-container{
+        padding:11px;
+    }
+
+    .section-title{
+        padding-left:13px;
+        padding-right:13px;
+    }
+
+    .friend{
+        min-height:65px;
+        padding-left:14px;
+        padding-right:14px;
+    }
+
+    .ai-tab{
+        padding:8px 10px;
+    }
+
+    .ai-tab-button{
+        min-height:46px;
+        padding:8px 12px;
+    }
+
+    .chat-header{
+        min-height:64px;
+        padding:9px 10px;
+        flex-shrink:0;
+    }
+
+    .chat-user{
+        min-width:0;
+        width:100%;
+    }
+
+    .chat-avatar{
+        width:39px;
+        height:39px;
+    }
+
+    .call-button{
+        width:37px;
+        height:37px;
+    }
+
+    #messages{
+        min-height:0;
+        flex:1;
+        padding:14px 10px;
+        overflow-y:auto;
+    }
+
+    .message{
+        max-width:87%;
+        padding:8px 10px;
+    }
+
+    .message-image,
+    .message-video{
+        max-width:74vw;
+    }
+
+    .message-area{
+        flex-shrink:0;
+        padding:8px;
+        padding-bottom:
+            max(8px,env(safe-area-inset-bottom));
+    }
+
+    #photoButton,
+    #messageInput,
+    #sendButton{
+        height:42px;
+    }
+
+    #photoButton{
+        width:42px;
+        min-width:42px;
+    }
+
+    #sendButton{
+        min-width:62px;
+        padding:0 10px;
+    }
+
+    .notification{
+        left:10px;
+        right:10px;
+        bottom:
+            max(10px,env(safe-area-inset-bottom));
+        width:auto;
+    }
+
+    .call-card{
+        width:min(94vw,380px);
+        border-radius:22px;
+    }
+
+    .call-local-video{
+        right:10px;
+        bottom:86px;
+        width:34vw;
+        min-width:105px;
+        max-width:145px;
+    }
+
+    .call-control{
+        width:45px;
+        height:45px;
+    }
+
+}
+
+@media(max-width:380px){
+
+    .logo{
+        font-size:17px;
+    }
+
+    .logged-in{
+        font-size:11px;
+    }
+
+    .logout-button{
+        padding:7px 8px;
+    }
+
+    .call-buttons{
+        gap:4px;
+    }
+
+    .call-button{
+        width:34px;
+        height:34px;
+        font-size:15px;
+    }
+
+    .mobile-back-button{
+        width:35px;
+        height:35px;
+    }
+
+    #chatPartner{
+        font-size:14px;
+    }
+
+    #sendButton{
+        min-width:56px;
+        font-size:11px;
+    }
+
+}
+
+.senden_button{
+    font-size:25px !important;
+    font-weight:bold;
+    line-height:1;
+}
+
+/* =========================================================
+   GERÄTE-FEHLERMELDUNG
+   ========================================================= */
+
+.device-error{
+    position:fixed;
+    right:24px;
+    bottom:24px;
+    z-index:99999;
+    width:min(390px,calc(100vw - 32px));
+    display:none;
+    align-items:center;
+    gap:14px;
+    padding:16px 18px;
+    background:
+        linear-gradient(
+            135deg,
+            rgba(10,10,10,.98),
+            rgba(0,0,0,.98)
+        );
+    border:
+        1px solid rgba(255,255,255,.55);
+    border-radius:16px;
+    box-shadow:
+        0 15px 45px rgba(0,0,0,.85);
+    backdrop-filter:blur(18px);
+    -webkit-backdrop-filter:blur(18px);
+    opacity:0;
+    transform:translateY(20px);
+    pointer-events:none;
+    transition:
+        opacity .25s ease,
+        transform .25s ease;
+}
+
+.device-error-icon{
+    flex-shrink:0;
+    font-size:22px;
+}
+
+.device-error-content{
+    flex:1;
+    min-width:0;
+}
+
+.device-error-title{
+    margin-bottom:4px;
+    color:#ffffff;
+    font-size:14px;
+    font-weight:700;
+}
+
+.device-error-text{
+    color:rgba(255,255,255,.70);
+    font-size:12px;
+    line-height:1.45;
+}
+
+.device-error-close{
+    width:30px;
+    height:30px;
+    flex-shrink:0;
+    border:
+        1px solid rgba(255,255,255,.10);
+    border-radius:8px;
+    background:rgba(255,255,255,.07);
+    color:rgba(255,255,255,.75);
+    font-size:22px;
+    line-height:1;
+    cursor:pointer;
+}
+
+.device-error-close:hover{
+    background:rgba(255,255,255,.16);
+    border-color:rgba(255,255,255,.40);
+    color:#ffffff;
+    transform:scale(1.05);
+}
+
+@media(max-width:650px){
+
+    .device-error{
+        left:10px;
+        right:10px;
+        bottom:
+            max(10px,env(safe-area-inset-bottom));
+        width:auto;
+    }
+
+}
+
+/* ======================================================
+   LOADING SCREEN
+   ====================================================== */
+
+#loading {
+    position:fixed;
+    inset:0;
+    z-index:9999;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    background:#000000;
+    opacity:1;
+    transition:opacity .35s ease;
+}
+
+#loading img {
+    width:140px;
+    height:140px;
+    object-fit:contain;
+    transform-origin:center;
+    animation:loadingLogoMotion 1.05s ease-in-out infinite;
+    will-change:transform,opacity,filter;
+}
+
+@keyframes loadingLogoMotion {
+    0% { transform:translate3d(0,0,0) rotate(0deg) scale(1); opacity:.86; filter:brightness(1); }
+    20% { transform:translate3d(-4px,-7px,0) rotate(-2deg) scale(1.035); opacity:1; filter:brightness(1.12); }
+    40% { transform:translate3d(5px,-13px,0) rotate(2.5deg) scale(1.065); opacity:.82; filter:brightness(1.28); }
+    55% { transform:translate3d(-3px,-8px,0) rotate(-1.5deg) scale(1.025); opacity:1; filter:brightness(1.05); }
+    72% { transform:translate3d(4px,-3px,0) rotate(1.5deg) scale(1.045); opacity:.9; filter:brightness(1.18); }
+    100% { transform:translate3d(0,0,0) rotate(0deg) scale(1); opacity:.86; filter:brightness(1); }
+}
+
+/* =========================================================
+   PRIVLINES FEATURES
+   ========================================================= */
+
+.message{
+    position:relative;
+}
+
+.message-actions{
+    display:none;
+    position:absolute;
+    right:6px;
+    top:6px;
+    gap:4px;
+    z-index:5;
+}
+
+.message.mine:hover .message-actions,
+.message.mine:focus-within .message-actions{
+    display:flex;
+}
+
+.message-action{
+    width:28px;
+    height:28px;
+    border-radius:9px;
+    background:rgba(0,0,0,.90);
+    color:#ffffff;
+    border:1px solid rgba(255,255,255,.15);
+    cursor:pointer;
+    font-size:13px;
+}
+
+.message-action:hover{
+    background:rgba(255,255,255,.20);
+}
+
+.voice-message{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    min-width:220px;
+}
+
+.voice-message audio{
+    width:210px;
+    max-width:100%;
+    height:38px;
+}
+
+.deleted-message{
+    opacity:.55;
+    font-style:italic;
+}
+
+.edited-label{
+    font-size:10px;
+    color:#aaa;
+    margin-left:6px;
+}
+
+.profile-avatar{
+    width:100%;
+    height:100%;
+    object-fit:cover;
+    border-radius:inherit;
+}
+
+.chat-avatar{
+    overflow:hidden;
+}
+
+.friend .avatar{
+    overflow:hidden;
+}
+
+.my-profile{
+    display:flex;
+    align-items:center;
+    gap:12px;
+    margin-top:14px;
+    padding:10px 12px;
+    border-radius:14px;
+    background:rgba(255,255,255,.05);
+    border:1px solid rgba(255,255,255,.08);
+    cursor:pointer;
+    transition:.2s;
+}
+
+.my-profile:hover{
+    background:rgba(255,255,255,.09);
+}
+
+.my-profile-avatar{
+    width:44px;
+    height:44px;
+    min-width:44px;
+    border-radius:50%;
+    overflow:hidden;
+    background:rgba(255,255,255,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-weight:700;
+    font-size:18px;
+    color:#ffffff;
+}
+
+.my-profile-info{
+    min-width:0;
+    flex:1;
+}
+
+.my-profile-name{
+    font-weight:700;
+    color:#ffffff;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+}
+
+.my-profile-label{
+    font-size:12px;
+    color:rgba(255,255,255,.5);
+    margin-top:2px;
+}
+
+.profile-menu{
+    display:none;
+    position:absolute;
+    left:14px;
+    right:14px;
+    top:105px;
+    z-index:60;
+    padding:14px;
+    border-radius:16px;
+    background:rgba(5,5,5,.98);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 15px 50px rgba(0,0,0,.85);
+}
+
+.profile-menu.open{
+    display:block;
+}
+
+.profile-menu-avatar{
+    width:72px;
+    height:72px;
+    margin:0 auto 10px;
+    border-radius:50%;
+    overflow:hidden;
+    background:rgba(255,255,255,.18);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    font-weight:700;
+}
+
+.profile-menu-name{
+    text-align:center;
+    color:#ffffff;
+    font-weight:700;
+    margin-bottom:12px;
+}
+
+.profile-menu button{
+    width:100%;
+    padding:11px 12px;
+    border:0;
+    border-radius:10px;
+    background:#ffffff;
+    color:#000000;
+    cursor:pointer;
+    text-align:left;
+}
+
+.profile-menu button:hover{
+    background:#eeeeee;
+}
+
+.chat-header-actions{
+    margin-left:auto;
+    display:flex;
+    gap:7px;
+}
+
+.chat-action-button{
+    width:38px;
+    height:38px;
+    border-radius:12px;
+    background:rgba(255,255,255,.08);
+    color:#ffffff;
+    border:1px solid rgba(255,255,255,.12);
+    cursor:pointer;
+}
+
+.chat-action-button:hover{
+    background:rgba(255,255,255,.22);
+}
+
+.feature-menu{
+    position:absolute;
+    right:14px;
+    top:68px;
+    z-index:50;
+    display:none;
+    min-width:190px;
+    padding:8px;
+    border-radius:15px;
+    background:rgba(5,5,5,.98);
+    border:1px solid rgba(255,255,255,.14);
+    box-shadow:0 15px 50px rgba(0,0,0,.85);
+}
+
+.feature-menu.open{
+    display:block;
+}
+
+.feature-menu button{
+    display:block;
+    width:100%;
+    padding:10px 12px;
+    text-align:left;
+    background:transparent;
+    color:#ffffff;
+    border-radius:9px;
+}
+
+.feature-menu button:hover{
+    background:rgba(255,255,255,.08);
+}
+
+.feature-menu .danger{
+    color:#ff8888;
+}
+
+.message-delivery-status{
+    display:inline-block;
+    margin-left:7px;
+    font-size:9px;
+    vertical-align:middle;
+}
+
+.message-delivery-status.blocked{
+    color:#ff3b30;
+}
+
+#voiceButton{
+    border-radius:15px;
+}
+
+#voiceButton.recording{
+    background:rgba(255,70,70,.25);
+    border-color:rgba(255,100,100,.55);
+}
+
+.recording-label{
+    display:none;
+    position:absolute;
+    bottom:72px;
+    left:50%;
+    transform:translateX(-50%);
+    padding:8px 13px;
+    border-radius:12px;
+    background:rgba(5,5,5,.92);
+    border:1px solid rgba(255,255,255,.12);
+    font-size:12px;
+    color:#ffffff;
+}
+
+.recording-label.visible{
+    display:block;
+}
+
+@media(max-width:650px){
+
+    .message-actions{
+        display:flex;
+        position:static;
+        margin-top:5px;
+    }
+
+    .chat-action-button{
+        width:36px;
+        height:36px;
+    }
+
+    .voice-message audio{
+        width:190px;
+    }
+
+}
+
+/* =========================================================
+   PRIVLINES EDITIONS
+   Die Edition wird serverseitig über /api/me bestimmt.
+   ========================================================= */
+
+.edition-badge{
+    display:inline-flex;
+    align-items:center;
+    width:max-content;
+    margin-top:2px;
+    padding:5px 9px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:999px;
+    background:rgba(255,255,255,.06);
+    color:rgba(255,255,255,.70);
+    font-size:9px;
+    font-weight:800;
+    letter-spacing:.08em;
+    text-transform:uppercase;
+    backdrop-filter:blur(10px);
+}
+
+
+/* =========================================================
+   STANDARD EDITION – GRUPPEN
+   ========================================================= */
+
+.blocked-section{
+    border-top:1px solid rgba(255,255,255,.10);
+    padding:0 13px;
+    flex:0 0 auto;
+}
+.blocked-section .section-title{
+    padding:10px 0;
+}
+.blocked-user-card{
+    display:flex;align-items:center;gap:9px;padding:8px;margin-bottom:6px;
+    border:1px solid rgba(255,255,255,.10);border-radius:11px;background:rgba(255,255,255,.035);
+}
+.blocked-user-card .blocked-user-info{flex:1;min-width:0;}
+.blocked-user-name{font-size:12px;font-weight:800;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.blocked-user-handle{font-size:10px;color:rgba(255,255,255,.48);margin-top:2px;}
+.blocked-user-card button{border:0;border-radius:8px;padding:7px 9px;background:#fff;color:#000;font-weight:800;cursor:pointer;font-size:10px;}
+
+.standard-groups-section{
+    display:none;
+    flex:0 0 auto;
+    max-height:38%;
+    min-height:0;
+    border-top:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.018);
+    overflow:hidden;
+}
+
+body.standard-mode .standard-groups-section{
+    display:flex;
+    flex-direction:column;
+}
+
+.standard-groups-content{
+    min-height:0;
+    overflow-y:auto;
+    padding:0 13px 10px;
+}
+
+.standard-group-card{
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px;
+    margin-bottom:7px;
+    border:1px solid rgba(255,255,255,.11);
+    border-radius:13px;
+    background:rgba(255,255,255,.035);
+    cursor:pointer;
+}
+
+.standard-group-card:hover{
+    background:rgba(255,255,255,.07);
+    transform:translateX(2px);
+}
+
+.standard-group-avatar{
+    width:38px;
+    height:38px;
+    flex:0 0 38px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    font-size:16px;
+    font-weight:900;
+}
+
+.standard-group-info{
+    min-width:0;
+    flex:1;
+}
+
+.standard-group-name{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:13px;
+    font-weight:800;
+}
+
+.standard-group-meta{
+    margin-top:3px;
+    color:rgba(255,255,255,.50);
+    font-size:10px;
+}
+
+.standard-group-create{
+    width:calc(100% - 26px);
+    margin:0 13px 9px;
+    padding:9px 10px;
+    border:1px solid rgba(255,255,255,.22);
+    border-radius:11px;
+    background:#fff;
+    color:#000;
+    font-size:11px;
+    font-weight:800;
+}
+
+.standard-group-create:hover{
+    background:#eee;
+    transform:translateY(-1px);
+}
+
+.group-modal{
+    position:fixed;
+    inset:0;
+    z-index:1200;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(0,0,0,.80);
+    backdrop-filter:blur(14px);
+    -webkit-backdrop-filter:blur(14px);
+}
+
+.group-modal.visible{
+    display:flex;
+}
+
+.group-modal-card{
+    width:min(470px,100%);
+    max-height:min(760px,90vh);
+    overflow-y:auto;
+    padding:20px;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:22px;
+    background:rgba(12,12,12,.97);
+    box-shadow:0 30px 90px rgba(0,0,0,.85);
+}
+
+.group-modal-title{
+    font-size:19px;
+    font-weight:800;
+}
+
+.group-modal-subtitle{
+    margin-top:5px;
+    color:rgba(255,255,255,.55);
+    font-size:12px;
+    line-height:1.45;
+}
+
+.group-form-label{
+    display:block;
+    margin:15px 0 6px;
+    color:rgba(255,255,255,.75);
+    font-size:11px;
+    font-weight:700;
+}
+
+.group-create-input,
+.group-create-textarea{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:12px;
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    outline:none;
+    font:inherit;
+}
+
+.group-create-textarea{
+    min-height:70px;
+    resize:vertical;
+}
+
+.group-friends-list{
+    display:flex;
+    flex-direction:column;
+    gap:6px;
+    max-height:260px;
+    overflow-y:auto;
+}
+
+.group-friend-option{
+    display:flex;
+    align-items:center;
+    gap:9px;
+    padding:9px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:11px;
+    background:rgba(255,255,255,.035);
+    cursor:pointer;
+}
+
+.group-friend-option input{
+    accent-color:#fff;
+}
+
+.group-friend-option-name{
+    min-width:0;
+    flex:1;
+    font-size:12px;
+    font-weight:700;
+}
+
+.group-modal-actions{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+}
+
+.group-modal-actions button{
+    flex:1;
+    padding:10px;
+    border-radius:11px;
+    font-weight:800;
+}
+
+.group-modal-cancel{
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.14);
+}
+
+.group-modal-submit{
+    background:#fff;
+    color:#000;
+}
+
+.group-error{
+    min-height:16px;
+    margin-top:10px;
+    color:#ff9999;
+    font-size:11px;
+}
+
+#groupView{
+    position:absolute;
+    inset:0;
+    z-index:40;
+    display:none;
+    flex-direction:column;
+    background:rgba(5,5,5,.98);
+}
+
+#groupView.visible{
+    display:flex;
+    pointer-events:auto;
+}
+
+.group-view-header{
+    min-height:70px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:11px 18px;
+    border-bottom:1px solid rgba(255,255,255,.12);
+    background:rgba(255,255,255,.025);
+}
+
+.group-view-back{
+    width:40px;
+    height:40px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+    font-size:24px;
+}
+
+.group-view-title{
+    min-width:0;
+    flex:1;
+}
+
+.group-add-members-button{
+    width:40px;
+    height:40px;
+    flex:0 0 40px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+    font-size:21px;
+    font-weight:900;
+    cursor:pointer;
+}
+
+.group-add-members-button:hover{
+    background:rgba(255,255,255,.13);
+}
+
+
+.group-view-name{
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:15px;
+    font-weight:800;
+}
+
+.group-view-meta{
+    margin-top:3px;
+    color:rgba(255,255,255,.55);
+    font-size:10px;
+}
+
+#groupMessages{
+    flex:1;
+    min-height:0;
+    overflow-y:auto;
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    padding:20px clamp(12px,3vw,34px);
+}
+
+.group-message{
+    max-width:min(68%,650px);
+    align-self:flex-start;
+    padding:9px 12px;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:16px 16px 16px 5px;
+    background:rgba(255,255,255,.075);
+    color:#fff;
+}
+
+.group-message.mine{
+    align-self:flex-end;
+    border-radius:16px 16px 5px 16px;
+    background:rgba(255,255,255,.13);
+}
+
+.group-message-sender{
+    margin-bottom:4px;
+    color:rgba(255,255,255,.60);
+    font-size:10px;
+    font-weight:800;
+}
+
+.group-message-text{
+    white-space:pre-wrap;
+    word-break:break-word;
+    font-size:13px;
+    line-height:1.45;
+}
+
+.group-input-area{
+    display:flex;
+    gap:8px;
+    padding:10px;
+    border-top:1px solid rgba(255,255,255,.12);
+    background:rgba(0,0,0,.75);
+}
+
+#groupMessageInput{
+    flex:1;
+    min-width:0;
+    padding:12px;
+    border:1px solid rgba(255,255,255,.15);
+    border-radius:12px;
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    outline:none;
+}
+
+#groupSendButton{
+    width:48px;
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    font-weight:900;
+}
+
+@media(max-width:650px){
+    .standard-groups-section{
+        max-height:34%;
+    }
+
+    #groupView{
+        border-radius:22px;
+    }
+
+    .group-message{
+        max-width:85%;
+    }
+
+    .group-view-header{
+        padding:10px 12px;
+    }
+}
+
+
+/* =========================================================
+   SCHOOL EDITION – SCHULEN & SCHULKANÄLE
+   ========================================================= */
+
+.school-channels-section{
+    display:none;
+    flex:0 0 auto;
+    min-height:0;
+    max-height:45%;
+    margin-top:0;
+    border-top:1px solid rgba(255,255,255,.10);
+    background:rgba(255,255,255,.018);
+    overflow:hidden;
+}
+
+body.school-mode .school-channels-section{
+    display:flex;
+    flex-direction:column;
+}
+
+.school-section-header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    min-height:48px;
+    padding:0 13px;
+    cursor:pointer;
+    user-select:none;
+    flex-shrink:0;
+}
+
+.school-section-header:hover{
+    background:rgba(255,255,255,.04);
+}
+
+.school-section-chevron{
+    font-size:12px;
+    transition:transform .2s ease;
+}
+
+.school-channels-content{
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    padding:0 13px 13px;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.25) transparent;
+}
+
+.school-channels-content::-webkit-scrollbar{
+    width:6px;
+}
+
+.school-channels-content::-webkit-scrollbar-track{
+    background:transparent;
+}
+
+.school-channels-content::-webkit-scrollbar-thumb{
+    background:rgba(255,255,255,.25);
+    border-radius:999px;
+}
+
+.school-channels-section.collapsed{
+    max-height:48px;
+}
+
+.school-channels-section.collapsed .school-channels-content{
+    display:none;
+}
+
+.school-channels-section.collapsed .school-section-chevron{
+    transform:rotate(-90deg);
+}
+
+.school-search-box{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
+
+.school-search-box input,
+.school-code-input,
+.school-create-input,
+.school-create-textarea{
+    width:100%;
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:12px;
+    background:rgba(255,255,255,.06);
+    color:#fff;
+    outline:none;
+}
+
+.school-search-box input{
+    min-width:0;
+    padding:11px 12px;
+}
+
+.school-search-box input:focus,
+.school-code-input:focus,
+.school-create-input:focus,
+.school-create-textarea:focus{
+    border-color:rgba(255,255,255,.45);
+}
+
+.school-search-box button,
+.school-action-button,
+.school-result-button{
+    border:1px solid rgba(255,255,255,.20);
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    font-weight:700;
+}
+
+.school-search-box button{
+    padding:0 13px;
+    flex-shrink:0;
+}
+
+.school-action-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    margin-top:9px;
+}
+
+.school-action-button{
+    padding:10px 8px;
+    background:rgba(255,255,255,.07);
+    color:#fff;
+}
+
+.school-action-button:hover,
+.school-result-button:hover{
+    transform:translateY(-1px);
+}
+
+.school-results,
+.my-school-list{
+    display:flex;
+    flex-direction:column;
+    gap:7px;
+    margin-top:10px;
+}
+
+.school-result,
+.my-school-card{
+    padding:11px;
+    border:1px solid rgba(255,255,255,.10);
+    border-radius:13px;
+    background:rgba(255,255,255,.035);
+}
+
+.school-result-top,
+.my-school-top{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:8px;
+}
+
+.school-result-name,
+.my-school-name{
+    font-size:13px;
+    font-weight:800;
+    color:#fff;
+}
+
+.school-result-info,
+.my-school-info{
+    margin-top:4px;
+    color:rgba(255,255,255,.58);
+    font-size:11px;
+    line-height:1.4;
+}
+
+.school-result-button{
+    padding:7px 9px;
+    font-size:11px;
+    white-space:nowrap;
+}
+
+.school-result-button.joined{
+    background:rgba(255,255,255,.10);
+    color:rgba(255,255,255,.60);
+    cursor:default;
+}
+
+.school-empty{
+    padding:9px 2px;
+    color:rgba(255,255,255,.45);
+    font-size:11px;
+    text-align:center;
+}
+
+.school-code-display{
+    margin-top:7px;
+    padding:9px 10px;
+    border:1px dashed rgba(255,255,255,.28);
+    border-radius:10px;
+    background:rgba(255,255,255,.045);
+    color:#fff;
+    font-family:monospace;
+    font-size:12px;
+    letter-spacing:.08em;
+    word-break:break-all;
+}
+
+/* School-Modal */
+.school-modal{
+    position:fixed;
+    inset:0;
+    z-index:1000;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:18px;
+    background:rgba(0,0,0,.78);
+    backdrop-filter:blur(12px);
+    -webkit-backdrop-filter:blur(12px);
+}
+
+.school-modal.visible{
+    display:flex;
+}
+
+.school-modal-card{
+    width:min(440px,100%);
+    padding:20px;
+    border:1px solid rgba(255,255,255,.16);
+    border-radius:22px;
+    background:rgba(12,12,12,.96);
+    box-shadow:0 30px 90px rgba(0,0,0,.8);
+}
+
+.school-modal-title{
+    font-size:19px;
+    font-weight:800;
+}
+
+.school-modal-subtitle{
+    margin-top:5px;
+    color:rgba(255,255,255,.55);
+    font-size:12px;
+    line-height:1.45;
+}
+
+.school-form-label{
+    display:block;
+    margin:15px 0 6px;
+    color:rgba(255,255,255,.75);
+    font-size:11px;
+    font-weight:700;
+}
+
+.school-create-input,
+.school-create-textarea,
+.school-code-input{
+    padding:12px;
+}
+
+.school-create-textarea{
+    min-height:90px;
+    resize:vertical;
+    font-family:inherit;
+}
+
+.school-modal-actions{
+    display:flex;
+    gap:8px;
+    margin-top:16px;
+}
+
+.school-modal-actions button{
+    flex:1;
+    padding:11px;
+    border-radius:12px;
+    font-weight:800;
+}
+
+.school-modal-cancel{
+    background:rgba(255,255,255,.08);
+    color:#fff;
+    border:1px solid rgba(255,255,255,.12);
+}
+
+.school-modal-submit{
+    background:#fff;
+    color:#000;
+}
+
+.school-created-code{
+    display:none;
+    margin-top:15px;
+}
+
+.school-created-code.visible{
+    display:block;
+}
+
+.school-created-code-label{
+    color:rgba(255,255,255,.55);
+    font-size:11px;
+}
+
+.school-created-code-value{
+    margin-top:6px;
+    padding:13px;
+    border:1px solid rgba(255,255,255,.25);
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    font-family:monospace;
+    font-size:16px;
+    font-weight:900;
+    letter-spacing:.08em;
+    text-align:center;
+    user-select:all;
+}
+
+.school-modal-error{
+    display:none;
+    margin-top:10px;
+    color:#ff8b8b;
+    font-size:12px;
+}
+
+.school-modal-error.visible{
+    display:block;
+}
+
+@media(max-width:650px){
+    .school-action-row{
+        grid-template-columns:1fr;
+    }
+}
+
+body.school-mode .edition-badge{
+    background:#ffffff;
+    border-color:#ffffff;
+    color:#000000;
+}
+
+body.school-mode .sidebar{
+    border-color:rgba(255,255,255,.22);
+}
+
+body.school-mode .chat{
+    border-color:rgba(255,255,255,.22);
+}
+
+body.standard-mode .edition-badge{
+    background:rgba(255,255,255,.06);
+}
+
+@media(max-width:650px){
+    .edition-badge{
+        font-size:8px;
+        padding:4px 8px;
+    }
+}
+
+
+/* Eigene Schulkanal-Codes */
+.school-codes-modal{position:fixed;inset:0;z-index:1100;display:none;align-items:center;justify-content:center;padding:18px;background:rgba(0,0,0,.82);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+.school-codes-modal.visible{display:flex}
+.school-codes-card{width:min(520px,100%);max-height:80vh;overflow:auto;padding:20px;border:1px solid rgba(255,255,255,.16);border-radius:22px;background:rgba(12,12,12,.97);box-shadow:0 30px 90px rgba(0,0,0,.8)}
+.school-codes-title{font-size:19px;font-weight:800;margin-bottom:5px}
+.school-codes-subtitle{font-size:12px;color:rgba(255,255,255,.55);margin-bottom:16px}
+.school-code-card{padding:14px;margin-bottom:10px;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:rgba(255,255,255,.04)}
+.school-code-name{font-weight:800;margin-bottom:8px}
+.school-code-value{font-family:monospace;font-weight:900;letter-spacing:.08em;background:#fff;color:#000;border-radius:10px;padding:11px;text-align:center;user-select:all}
+.school-code-meta{font-size:10px;color:rgba(255,255,255,.45);margin-top:7px}
+.school-code-actions{display:flex;gap:8px;margin-top:9px}
+.school-code-actions button{flex:1;padding:9px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff;font-weight:700}
+.school-codes-close{width:100%;margin-top:8px;padding:11px;border-radius:12px;border:0;background:#fff;color:#000;font-weight:800}
+
+
+
+/* Sidebar stays scrollable so contacts remain reachable at every height. */
+.sidebar{
+    overflow-x:hidden;
+    overflow-y:auto;
+    overscroll-behavior:contain;
+    scrollbar-width:thin;
+    scrollbar-color:rgba(255,255,255,.24) transparent;
+}
+.sidebar::-webkit-scrollbar{width:6px}
+.sidebar::-webkit-scrollbar-track{background:transparent}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.24);border-radius:999px}
+.sidebar-header,
+.search-container,
+.section,
+.blocked-section,
+.standard-groups-section,
+.school-channels-section,
+.ai-tab,
+.status{flex-shrink:0}
+#requestsList{
+    max-height:clamp(80px,18vh,160px);
+    overflow-y:auto;
+    overscroll-behavior:contain;
+}
+.friends-section{
+    flex:1 0 clamp(190px,26vh,280px);
+    min-height:190px;
+    border-top:1px solid rgba(255,255,255,.10);
+}
+.friends-section > .section-title{
+    position:sticky;
+    top:0;
+    z-index:2;
+    flex-shrink:0;
+    color:#fff;
+    background:rgba(8,8,8,.98);
+}
+#friendsList{min-height:150px;padding-bottom:4px}
+.friend{
+    min-height:68px;
+    margin:4px 8px;
+    padding:10px 12px;
+    border:1px solid transparent;
+    border-radius:14px;
+}
+.friend:hover{transform:none;border-color:rgba(255,255,255,.18)}
+.friend.active{
+    border:1px solid rgba(255,255,255,.34);
+    border-left:3px solid #fff;
+    background:rgba(255,255,255,.12);
+}
+.friend-name{font-size:14px;line-height:1.35}
+.friend-status{color:rgba(255,255,255,.76);font-size:11px}
+@media(max-width:650px){
+    .friends-section{flex-basis:clamp(180px,28vh,260px)}
+    .friend{min-height:70px}
+}/* PRIVLINES MONOCHROME REFRESH */
+:root{
+    color-scheme:dark;
+    --pl-black:#080808;
+    --pl-panel:#111111;
+    --pl-panel-soft:#181818;
+    --pl-white:#ffffff;
+    --pl-muted:#a4a4a4;
+    --pl-line:rgba(255,255,255,.12);
+    --pl-focus:rgba(255,255,255,.32);
+}
+body{
+    color:var(--pl-white);
+    background:var(--pl-black);
+    font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    letter-spacing:.005em;
+}
+.background{
+    background:
+        radial-gradient(ellipse at 84% 4%,rgba(255,255,255,.075),transparent 34%),
+        radial-gradient(ellipse at 6% 100%,rgba(255,255,255,.04),transparent 34%),
+        #080808;
+}
+.app{gap:16px;padding:16px}
+.sidebar,.chat{
+    border:1px solid rgba(255,255,255,.13);
+    border-radius:24px;
+    box-shadow:0 18px 54px rgba(0,0,0,.38);
+}
+.sidebar{
+    background:linear-gradient(165deg,#151515 0%,#0d0d0d 72%);
+    scrollbar-color:rgba(255,255,255,.24) transparent;
+}
+.sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.24)}
+.sidebar-header{
+    padding:20px 18px 16px;
+    background:rgba(255,255,255,.025);
+    border-bottom-color:var(--pl-line);
+}
+.logo img{width:min(180px,100%);height:auto;object-fit:contain}
+.my-profile{
+    border:1px solid rgba(255,255,255,.09);
+    border-radius:16px;
+    background:rgba(255,255,255,.035);
+}
+.my-profile:hover{background:rgba(255,255,255,.075)}
+.search-container{padding:14px 14px 12px;border-bottom-color:var(--pl-line)}
+.search input,.school-search-box input,#usernameInput{
+    min-height:42px;border:1px solid rgba(255,255,255,.14);
+    border-radius:13px;background:#191919;color:#fff;
+}
+.search input:focus,.school-search-box input:focus,#usernameInput:focus{
+    border-color:rgba(255,255,255,.55);
+    box-shadow:0 0 0 3px rgba(255,255,255,.09);
+}
+.search > button,#searchButton,#schoolSearchButton{
+    min-height:42px;border:1px solid #fff;border-radius:13px;
+    background:#fff;color:#080808;box-shadow:none;
+}
+.search > button:hover,#searchButton:hover,#schoolSearchButton:hover{
+    background:#e9e9e9;transform:translateY(-1px)
+}
+.user-directory-tabs{gap:7px}
+.user-directory-tab{
+    min-height:40px;border-color:rgba(255,255,255,.12);
+    border-radius:12px;background:rgba(255,255,255,.045);color:#c7c7c7;
+}
+.user-directory-tab.active{border-color:#fff;background:#fff;color:#080808}
+.section-title,.school-section-header{color:#f3f3f3}
+.section-title{padding:12px 14px;font-size:11px;font-weight:800;letter-spacing:.055em}
+.friends-section{border-top-color:var(--pl-line)}
+.friends-section > .section-title{background:#101010}
+.friend{
+    border:1px solid transparent;border-radius:15px;
+    transition:background .18s ease,border-color .18s ease,transform .18s ease;
+}
+.friend:hover{background:rgba(255,255,255,.055);border-color:rgba(255,255,255,.12)}
+.friend.active{border:1px solid #fff;border-left:3px solid #fff;background:#fff;color:#080808}
+.friend.active .friend-name{color:#080808}
+.friend.active .friend-status{color:#555}
+.friend-name{font-weight:750}
+.friend-status{color:#aaa}
+.status{border-top-color:var(--pl-line);background:rgba(255,255,255,.025);color:#bcbcbc}
+.chat{color:#111;background:#fff}
+.chat-header{
+    min-height:76px;padding:12px 20px;border-bottom:1px solid #e9e9e9;
+    background:#fff;color:#111;
+}
+#chatPartner{color:#111;font-size:16px;font-weight:750}
+.chat-subtitle{color:#717171}
+.chat-avatar{border:1px solid #dedede;background:#f1f1f1;color:#111}
+.call-button,.chat-action-button{
+    border:1px solid #e4e4e4;border-radius:13px;background:#f8f8f8;color:#111;
+}
+.call-button:hover:not(:disabled),.chat-action-button:hover{
+    border-color:#111;background:#111;color:#fff
+}
+#messages{
+    background:#f4f4f4;gap:10px;padding:clamp(16px,3vw,30px);
+    scrollbar-color:#bcbcbc transparent;
+}
+#messages::-webkit-scrollbar{width:8px}
+#messages::-webkit-scrollbar-thumb{
+    border:2px solid #f4f4f4;border-radius:20px;background:#bcbcbc
+}
+.empty-chat{color:#717171}
+.message{
+    border:1px solid #e5e5e5;border-radius:19px 19px 19px 6px;
+    background:#fff;color:#111;box-shadow:0 5px 18px rgba(0,0,0,.055);
+    backdrop-filter:none;
+}
+.message.mine{
+    border-color:#111;border-radius:19px 19px 6px 19px;
+    background:#111;color:#fff;box-shadow:0 6px 18px rgba(0,0,0,.13);
+}
+.message-user{color:#777}
+.message.mine .message-user{color:#c8c8c8}
+.message-text{font-size:14px;line-height:1.55}
+.message-image,.message-video{
+    border:1px solid rgba(0,0,0,.08);box-shadow:0 6px 20px rgba(0,0,0,.12)
+}
+.message-area{
+    gap:9px;padding:13px 16px;border-top:1px solid #e8e8e8;
+    background:#fff;backdrop-filter:none;
+}
+#voiceButton,#photoButton{
+    width:42px;min-width:42px;height:42px;
+    border:1px solid #e4e4e4;border-radius:13px;background:#f5f5f5;color:#111;
+}
+#voiceButton:hover:not(:disabled),#photoButton:hover:not(:disabled){
+    background:#e8e8e8;transform:translateY(-1px)
+}
+#messageInput{
+    height:44px;padding:0 15px;border:1px solid #e4e4e4!important;
+    border-radius:14px;background:#f5f5f5;color:#111;font-size:14px;
+}
+#messageInput::placeholder{color:#777}
+#messageInput:focus{
+    border-color:#888!important;outline:3px solid rgba(0,0,0,.07)!important;
+    background:#fff;
+}
+#sendButton{
+    min-width:48px;height:44px;border:1px solid #111;border-radius:14px;
+    background:#111;color:#fff;box-shadow:none;
+}
+#sendButton:hover:not(:disabled){
+    border-color:#333;background:#333;transform:translateY(-1px)
+}
+:where(button,a,input,[tabindex="0"]):focus-visible{
+    outline:3px solid rgba(255,255,255,.6);outline-offset:2px;
+}
+.chat :where(button,a,input,[tabindex="0"]):focus-visible{
+    outline-color:rgba(0,0,0,.58);
+}
+@media(max-width:650px){
+    .app{gap:0;padding:8px}
+    .sidebar,.chat{border-radius:19px}
+    .chat-header{min-height:66px;padding:10px 13px}
+    #messages{padding:14px 11px}
+    .message{max-width:88%}
+    .message-area{gap:7px;padding:10px}
+    #voiceButton,#photoButton{width:40px;min-width:40px;height:40px}
+    #messageInput{height:42px;padding:0 11px}
+    #sendButton{min-width:42px;height:42px;padding:0 10px}
+}
+@media(prefers-reduced-motion:reduce){
+    *,*::before,*::after{
+        scroll-behavior:auto!important;transition-duration:.01ms!important;
+        animation-duration:.01ms!important
+    }
+}
+/* Consistent user rows and compact add action */
+.all-users-list{gap:8px}
+.all-user-card,#searchResult .search-result{display:flex;align-items:center;justify-content:flex-start;gap:11px;min-width:0;padding:9px 10px;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:#141414;backdrop-filter:none;transition:border-color .18s ease,background .18s ease}
+.all-user-card:hover,#searchResult .search-result:hover{border-color:rgba(255,255,255,.28);background:#191919}
+.all-user-avatar{width:42px;height:42px;min-width:42px;border:1px solid #303030;background:#202020;color:#fff}
+.all-user-info{flex:1;min-width:0}
+.all-user-name{color:#fff;font-size:13px;font-weight:750}
+.all-user-username{margin-top:3px;color:#999;font-size:11px}
+.all-user-action{flex-shrink:0;margin-left:auto}
+#searchResult .friend-action-button,.all-user-card .friend-action-button{display:inline-grid;place-items:center;width:38px;min-width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.32);border-radius:50%;background:#fff;color:#090909;box-shadow:none;font-size:22px;font-weight:650;line-height:1;transition:background .16s ease,color .16s ease,transform .16s ease}
+#searchResult .friend-action-button:hover:not(:disabled),.all-user-card .friend-action-button:hover:not(:disabled){border-color:#fff;background:#dcdcdc;color:#000;transform:scale(1.06)}
+#searchResult .friend-action-button:disabled,.all-user-card .friend-action-button:disabled{opacity:.5}
+/* Text-sized Adden action */
+#searchResult .friend-action-button[data-friend-status="none"],
+#searchResult .friend-action-button[data-friend-status="rejected"],
+.all-user-card .friend-action-button[data-friend-status="none"],
+.all-user-card .friend-action-button[data-friend-status="rejected"]{
+    width:auto;
+    min-width:64px;
+    padding:0 12px;
+    border-radius:999px;
+    font-size:11px;
+    font-weight:750;
+    letter-spacing:0;
+}
+</style>
+
+</head>
+
+<body class="edition-loading">
+
+<!-- LOADING SCREEN -->
+
+
+<div id="loading">
+    <img src="/logo_white.png" alt="PrivLines Logo">
+</div>
+
+<div class="background"></div>
+
+<div class="app">
+
+    <aside class="sidebar">
+
+        <div class="sidebar-header">
+
+            <div class="header-top">
+
+                <div>
+
+                    <div class="logo">
+                        <img src="/text_logo.png" width="200" height="100" alt="PrivLines">
+                    </div>
+
+                    <div
+                        id="editionBadge"
+                        class="edition-badge"
+                        aria-label="PrivLines Edition"
+                    >
+                        ...
+                    </div>
+
+                    <div class="my-profile" id="myProfileButton" title="Mein Profil">
+
+                        <div class="my-profile-avatar" id="myProfileAvatar">
+                            ?
+                        </div>
+
+                        <div class="my-profile-info">
+
+                            <div class="my-profile-name" id="myUsername">
+                                ...
+                            </div>
+
+                            <div class="my-profile-label">
+                                Mein Profil
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div id="profileMenu" class="profile-menu">
+
+                        <div class="profile-menu-avatar" id="profileMenuAvatar">
+                            ?
+                        </div>
+
+                        <div class="profile-menu-name" id="profileMenuName">
+                            ...
+                        </div>
+
+                        <button id="changeOwnProfileButton" type="button">
+                            Profilbild ändern
+                        </button>
+
+                        <button id="schoolCodesButton" type="button" style="display:none">
+                            🏫 Meine Schulkanal-Codes
+                        </button>
+
+                        <button id="deleteAccountButton" type="button" style="margin-top:8px;background:rgba(255,0,0,.12);color:#ff9999;border:1px solid rgba(255,100,100,.25);">Account löschen</button>
+
+                        <button id="logoutButton" class="logout-button" type="button">
+                            Abmelden
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="search-container">
+
+            <div class="search">
+
+                <input
+                    type="text"
+                    id="usernameInput"
+                    placeholder="Benutzer suchen..."
+                    autocomplete="off"
+                >
+
+                <button id="searchButton" type="button">
+                    Suchen
+                </button>
+
+            </div>
+
+            <div class="user-directory-tabs" role="tablist" aria-label="Benutzersuche">
+                <button id="searchTabButton" class="user-directory-tab active" type="button" role="tab" aria-selected="true">
+                    🔎 Suchen
+                </button>
+                <button id="allUsersTabButton" class="user-directory-tab" type="button" role="tab" aria-selected="false">
+                    👥 Alle Nutzer
+                </button>
+            </div>
+
+            <div id="searchResult"></div>
+
+        </div>
+
+        <div class="section">
+
+            <div class="section-title">
+
+                <span>
+                    📨 Freundschaftsanfragen
+                </span>
+
+                <span
+                    class="badge"
+                    id="requestBadge"
+                    style="display:none"
+                >
+                    0
+                </span>
+
+            </div>
+
+            <div id="requestsList">
+
+                <div class="empty-list">
+                    Keine neuen Anfragen
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="friends-section">
+
+            <div class="section-title">
+                👥 Meine Freunde
+            </div>
+
+            <div id="friendsList">
+
+                <div class="empty-list">
+                    Noch keine Freunde.
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             SCHOOL EDITION – SCHULEN
+             ===================================================== -->
+
+        <div class="school-channels-section" id="schoolChannelsSection">
+
+            <div class="school-section-header" id="schoolSectionToggle" role="button" tabindex="0" aria-expanded="true">
+                <span>🏫 Schulen</span>
+                <span class="school-section-chevron" id="schoolSectionChevron">⌄</span>
+            </div>
+
+            <div class="school-channels-content" id="schoolChannelsContent">
+
+            <div class="school-search-box">
+                <input
+                    id="schoolSearchInput"
+                    type="text"
+                    placeholder="Schule suchen..."
+                    autocomplete="off"
+                    maxlength="150"
+                >
+                <button id="schoolSearchButton" type="button">
+                    Suchen
+                </button>
+            </div>
+
+            <div class="school-action-row">
+                <button id="createSchoolButton" class="school-action-button" type="button">
+                    + Schulkanal
+                </button>
+                <button id="joinSchoolButton" class="school-action-button" type="button">
+                    Code beitreten
+                </button>
+            </div>
+
+            <div id="schoolSearchResults" class="school-results"></div>
+            <div id="mySchoolList" class="my-school-list"></div>
+
+            </div>
+
+        </div>
+
+        <!-- =====================================================
+             AI REITER
+             ===================================================== -->
+
+        <div class="ai-tab">
+
+            <a
+                href="/ai.html"
+                class="ai-tab-button"
+                title="AI öffnen"
+            >
+
+                <span class="ai-tab-icon">
+                    ✨
+                </span>
+
+                <span class="ai-tab-text">
+                    PrivLines AI
+                </span>
+
+            </a>
+
+        </div>
+
+
+
+        <div
+            class="status"
+            id="status"
+        >
+            ● Verbinde...
+        </div>
+
+        <!-- =====================================================
+             STANDARD EDITION – GRUPPEN / GEBLOCKTE NUTZER
+             Diese beiden Bereiche stehen bewusst ganz unten und sind
+             standardmäßig eingeklappt.
+             ===================================================== -->
+        <div class="standard-groups-section" id="standardGroupsSection">
+            <div class="section-title" id="standardGroupsToggle" style="cursor:pointer;">
+                <span>👥 Meine Gruppen</span>
+                <span id="groupCountBadge" class="badge" style="display:none">0</span>
+            </div>
+            <div id="standardGroupsContent" style="display:none;">
+                <button id="createGroupButton" class="standard-group-create" type="button">
+                    ＋ Gruppe erstellen
+                </button>
+                <div class="standard-groups-content" id="groupsList">
+                    <div class="empty-list">Noch keine Gruppen.</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="blocked-section" id="blockedSection">
+            <div class="section-title" id="blockedSectionToggle" style="cursor:pointer;">
+                <span>🚫 Geblockte Nutzer</span>
+                <span id="blockedCountBadge" class="badge" style="display:none">0</span>
+            </div>
+            <div id="blockedUsersList" style="display:none;padding-bottom:10px;">
+                <div class="empty-list">Keine geblockten Nutzer.</div>
+            </div>
+        </div>
+
+    </aside>
+
+    <main
+        class="chat"
+        id="chat"
+    >
+
+
+
+        <div id="schoolChannelView" aria-hidden="true">
+            <div class="school-channel-header">
+                <button id="schoolChannelBack" class="school-channel-back" type="button" title="Zurück">‹</button>
+                <div class="school-channel-avatar">🏫</div>
+                <div style="min-width:0;">
+                    <div id="schoolChannelTitle" class="school-channel-title">Schulkanal</div>
+                    <div id="schoolChannelSubtitle" class="school-channel-subtitle">Schulchat</div>
+                </div>
+            </div>
+
+            <div id="schoolChannelMessages">
+                <div class="school-channel-empty">Wähle einen Schulkanal aus.</div>
+            </div>
+
+            <div class="school-channel-input-area">
+                <input id="schoolChannelInput" type="text" maxlength="5000" placeholder="Nachricht im Schulkanal schreiben..." autocomplete="off">
+                <button id="schoolChannelSend" type="button" title="Senden">⬆</button>
+            </div>
+        </div>
+
+        <header class="chat-header">
+
+            <div class="chat-user">
+
+                <button
+                    class="mobile-back-button"
+                    id="mobileBackButton"
+                    type="button"
+                >
+                    ‹
+                </button>
+
+                <div
+                    class="chat-avatar"
+                    id="chatAvatar"
+                >
+                    ?
+                </div>
+
+                <div>
+
+                    <div id="chatPartner">
+                        Kein Chat ausgewählt
+                    </div>
+
+                    <div class="chat-subtitle">
+                        Wähle einen Freund aus
+                    </div>
+
+                </div>
+
+                <div class="call-buttons">
+
+                    <button
+                        id="audioCallButton"
+                        class="call-button"
+                        type="button"
+                        title="Telefonanruf"
+                        disabled
+                    >
+                        📞
+                    </button>
+
+                    <button
+                        id="videoCallButton"
+                        class="call-button"
+                        type="button"
+                        title="Videoanruf"
+                        disabled
+                    >
+                        📹
+                    </button>
+
+                </div>
+
+                <div class="chat-header-actions">
+
+                    <button
+                        id="chatMenuButton"
+                        class="chat-action-button"
+                        type="button"
+                        title="Chat-Einstellungen"
+                    >
+                        ⋮
+                    </button>
+
+                </div>
+
+            </div>
+
+        </header>
+
+        <div id="featureMenu" class="feature-menu">
+
+            <button id="unfriendButton" type="button">
+                👤 Freund entfernen
+            </button>
+
+            <button id="blockButton" class="danger" type="button">
+                🚫 Benutzer blockieren
+            </button>
+
+        </div>
+
+        <div
+            id="callOverlay"
+            class="call-overlay"
+            aria-hidden="true"
+        >
+
+            <div class="call-card">
+
+                <div
+                    id="callAvatar"
+                    class="call-avatar"
+                >
+                    ?
+                </div>
+
+                <div
+                    id="callName"
+                    class="call-name"
+                >
+                    Anruf
+                </div>
+
+                <div
+                    id="callState"
+                    class="call-state"
+                >
+                    Anruf wird vorbereitet...
+                </div>
+
+                <div
+                    id="incomingCallActions"
+                    class="call-actions"
+                    style="display:none"
+                >
+
+                    <button
+                        id="acceptCallButton"
+                        class="call-accept"
+                        type="button"
+                    >
+                        Annehmen
+                    </button>
+
+                    <button
+                        id="rejectCallButton"
+                        class="call-reject"
+                        type="button"
+                    >
+                        Ablehnen
+                    </button>
+
+                </div>
+
+                <div
+                    id="outgoingCallActions"
+                    class="call-actions"
+                    style="display:none"
+                >
+
+                    <button
+                        id="cancelCallButton"
+                        class="call-cancel"
+                        type="button"
+                    >
+                        Auflegen
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <div
+            id="callVideos"
+            class="call-videos"
+            aria-hidden="true"
+        >
+
+            <video
+                id="remoteVideo"
+                class="call-remote-video"
+                autoplay
+                playsinline
+            ></video>
+
+            <video
+                id="localVideo"
+                class="call-local-video"
+                autoplay
+                muted
+                playsinline
+            ></video>
+
+            <div class="call-controls">
+
+                <button
+                    id="muteCallButton"
+                    class="call-control"
+                    type="button"
+                    title="Mikrofon"
+                >
+                    🎙️
+                </button>
+
+                <button
+                    id="cameraCallButton"
+                    class="call-control"
+                    type="button"
+                    title="Kamera"
+                >
+                    📷
+                </button>
+
+                <button
+                    id="endCallButton"
+                    class="call-control end"
+                    type="button"
+                    title="Auflegen"
+                >
+                    📞
+                </button>
+
+            </div>
+
+        </div>
+
+        <div id="messages">
+
+            <div class="empty-chat">
+
+                <div
+                    style="
+                        font-size:40px;
+                        margin-bottom:10px
+                    "
+                >
+                    💬
+                </div>
+
+                <div>
+                    Wähle einen Freund aus,
+                    um zu chatten.
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="message-area">
+
+            <button
+                id="voiceButton"
+                type="button"
+                title="Sprachnachricht aufnehmen"
+                disabled
+            >
+                <img src="/mikrofon.png" width="20px" height="20px">
+            </button>
+
+            <button
+                id="photoButton"
+                type="button"
+                title="Foto oder Video senden"
+                disabled
+            >
+                <img src="/kamera.png" width="20px" height="20px">
+            </button>
+
+            <input
+                type="file"
+                id="photoInput"
+                accept="image/jpeg,image/png,image/gif,image/webp,video/mp4,video/webm,video/ogg,video/quicktime"
+                hidden
+            >
+
+            <input
+                type="text"
+                id="messageInput"
+                placeholder="Nachricht schreiben..."
+                autocomplete="off"
+                disabled
+            >
+
+            <button
+                class="senden_button"
+                id="sendButton"
+                disabled
+            >
+                ⬆
+            </button>
+
+        </div>
+
+        <div id="recordingLabel" class="recording-label">
+            🎙️ Aufnahme läuft … zum Beenden erneut drücken
+        </div>
+
+        <input
+            type="file"
+            id="profilePictureInput"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            hidden
+        >
+
+    </main>
+
+</div>
+
+<div
+    class="notification"
+    id="notification"
+>
+
+    <div
+        class="notification-title"
+        id="notificationTitle"
+    >
+        Neue Nachricht
+    </div>
+
+    <div
+        class="notification-text"
+        id="notificationText"
+    >
+        ...
+    </div>
+
+</div>
+
+
+
+<script>
+window.privLinesEditionReady = (async function initPrivLinesEdition() {
+    const badge = document.getElementById("editionBadge");
+
+    try {
+        const response = await fetch("/api/me", {
+            method: "GET",
+            credentials: "include",
+            cache: "no-store"
+        });
+
+        if (!response.ok) {
+            window.location.href = "/login.html";
+            return null;
+        }
+
+        const user = await response.json();
+        const mode = user.mode === "school" ? "school" : "standard";
+
+        document.body.classList.remove("edition-loading");
+        document.body.classList.remove("standard-mode", "school-mode");
+        document.body.classList.add(mode + "-mode");
+
+        if (badge) {
+            badge.textContent = mode === "school"
+                ? "SCHOOL EDITION"
+                : "STANDARD EDITION";
+        }
+
+        window.privLinesEdition = mode;
+        window.privLinesUser = user;
+
+        // Edition ist geladen -> Loading Screen ausblenden.
+        const loading = document.getElementById("loading");
+        if (loading) {
+            loading.style.opacity = "0";
+            setTimeout(() => {
+                loading.style.display = "none";
+            }, 800);
+        }
+
+        const schoolCodesButton = document.getElementById("schoolCodesButton");
+        if (schoolCodesButton) {
+            schoolCodesButton.style.display = mode === "school" ? "block" : "none";
+        }
+
+        return user;
+
+    } catch (error) {
+        console.error("PrivLines Edition konnte nicht geladen werden:", error);
+        window.location.href = "/login.html";
+        return null;
+    }
+})();
+
+window.privLinesEditionReady.then((user) => {
+    if (!user) return;
+
+    const script = document.createElement("script");
+    script.src = "/chat2.js";
+
+    script.onload = () => {
+        console.log("✅ chat2.js vollständig geladen.");
+        window.dispatchEvent(new Event("privlinesSocketReady"));
+
+        const callScript = document.createElement("script");
+        callScript.src = "/call.js";
+
+        callScript.onload = () => {
+            console.log("✅ call.js vollständig geladen.");
+        };
+
+        callScript.onerror = () => {
+            console.error("❌ call.js konnte nicht geladen werden.");
+        };
+
+        document.body.appendChild(callScript);
+    };
+
+    script.onerror = () => {
+        console.error("❌ chat2.js konnte nicht geladen werden.");
+    };
+
+    document.body.appendChild(script);
+});
+</script>
+
+<!-- =========================================================
+     STANDARD EDITION – GRUPPEN
+     ========================================================= -->
+
+<div id="groupModal" class="group-modal" aria-hidden="true">
+    <div class="group-modal-card">
+        <div class="group-modal-title">👥 Gruppe erstellen</div>
+        <div class="group-modal-subtitle">
+            Erstelle eine Gruppe und wähle direkt deine Standard-Freunde aus.
+        </div>
+
+        <label class="group-form-label" for="groupCreateName">Gruppenname</label>
+        <input id="groupCreateName" class="group-create-input" type="text"
+               maxlength="100" placeholder="z. B. Gaming Crew">
+
+        <label class="group-form-label" for="groupCreateDescription">Beschreibung (optional)</label>
+        <textarea id="groupCreateDescription" class="group-create-textarea"
+                  maxlength="500" placeholder="Worum geht es in der Gruppe?"></textarea>
+
+        <label class="group-form-label">Freunde hinzufügen</label>
+        <div id="groupFriendsList" class="group-friends-list"></div>
+
+        <div id="groupCreateError" class="group-error"></div>
+
+        <div class="group-modal-actions">
+            <button id="groupModalCancel" class="group-modal-cancel" type="button">Abbrechen</button>
+            <button id="groupModalSubmit" class="group-modal-submit" type="button">Gruppe erstellen</button>
+        </div>
+    </div>
+</div>
+
+<div id="groupMembersModal" class="group-modal" aria-hidden="true">
+    <div class="group-modal-card">
+        <div class="group-modal-title">👥 Mitglieder hinzufügen</div>
+        <div class="group-modal-subtitle">
+            Wähle Freunde aus, die du nachträglich in diese Gruppe aufnehmen möchtest.
+        </div>
+
+        <div id="groupMembersList" class="group-friends-list"></div>
+        <div id="groupMembersError" class="group-error"></div>
+
+        <div class="group-modal-actions">
+            <button id="groupMembersCancel" class="group-modal-cancel" type="button">Abbrechen</button>
+            <button id="groupMembersSubmit" class="group-modal-submit" type="button">Hinzufügen</button>
+        </div>
+    </div>
+</div>
+
+<div id="groupView" aria-hidden="true">
+    <div class="group-view-header">
+        <button id="groupViewBack" class="group-view-back" type="button" title="Zurück">‹</button>
+        <div class="group-view-title">
+            <div id="groupViewName" class="group-view-name">Gruppe</div>
+            <div id="groupViewMeta" class="group-view-meta">0 Mitglieder</div>
+        </div>
+        <button id="groupAddMembersButton" class="group-add-members-button" type="button" title="Mitglieder verwalten">＋</button>
+    </div>
+
+    <div id="groupMessages">
+        <div class="empty-chat">Noch keine Gruppennachrichten.</div>
+    </div>
+
+    <div class="group-input-area">
+        <input id="groupMessageInput" type="text"
+               maxlength="5000"
+               placeholder="Gruppennachricht..."
+               autocomplete="off">
+        <button id="groupSendButton" type="button">⬆</button>
+    </div>
+</div>
+
+
+<!-- =========================================================
+     SCHOOL MODALS
+     ========================================================= -->
+
+<div id="schoolModal" class="school-modal" aria-hidden="true">
+    <div class="school-modal-card">
+        <div id="schoolModalTitle" class="school-modal-title">Schulkanal erstellen</div>
+        <div id="schoolModalSubtitle" class="school-modal-subtitle">
+            Erstelle einen Schulkanal für deine Schule.
+        </div>
+
+        <div id="schoolCreateFields">
+            <label class="school-form-label" for="schoolCreateName">Schulname</label>
+            <input id="schoolCreateName" class="school-create-input" type="text" maxlength="150" placeholder="z. B. Gustav-Heinemann-Schule">
+
+            <label class="school-form-label" for="schoolCreateDescription">Beschreibung (optional)</label>
+            <textarea id="schoolCreateDescription" class="school-create-textarea" maxlength="500" placeholder="z. B. Schulkommunikation"></textarea>
+        </div>
+
+        <div id="schoolJoinFields" style="display:none">
+            <label class="school-form-label" for="schoolJoinCode">Schul-Code</label>
+            <input id="schoolJoinCode" class="school-code-input" type="text" maxlength="14" placeholder="AB12-CD34-EF56" autocomplete="off">
+        </div>
+
+        <div id="schoolCreatedCode" class="school-created-code">
+            <div class="school-created-code-label">Dein einmalig angezeigter Beitrittscode:</div>
+            <div id="schoolCreatedCodeValue" class="school-created-code-value"></div>
+        </div>
+
+        <div id="schoolModalError" class="school-modal-error"></div>
+
+        <div class="school-modal-actions">
+            <button id="schoolModalCancel" class="school-modal-cancel" type="button">Schließen</button>
+            <button id="schoolModalSubmit" class="school-modal-submit" type="button">Erstellen</button>
+        </div>
+    </div>
+</div>
+
+<div id="schoolCodesModal" class="school-codes-modal" aria-hidden="true">
+    <div class="school-codes-card">
+        <div class="school-codes-title">Schulkanal-Codes</div>
+        <div class="school-codes-subtitle">Hier siehst du die aktuellen Beitrittscodes deiner selbst erstellten Schulkanäle. Die Codes werden automatisch regelmäßig geändert.</div>
+        <div id="schoolCodesList"></div>
+        <button id="schoolCodesClose" class="school-codes-close" type="button">Schließen</button>
+    </div>
+</div>
+
+<div
+    id="deviceError"
+    class="device-error"
+    aria-hidden="true"
+>
+
+    <div class="device-error-icon">
+        ⚠️
+    </div>
+
+    <div class="device-error-content">
+
+        <div
+            id="deviceErrorTitle"
+            class="device-error-title"
+        >
+            Gerät nicht verfügbar
+        </div>
+
+        <div
+            id="deviceErrorText"
+            class="device-error-text"
+        >
+            Es wurde kein benötigtes Gerät gefunden.
+        </div>
+
+    </div>
+
+    <button
+        id="deviceErrorClose"
+        class="device-error-close"
+        type="button"
+    >
+        ×
+    </button>
+
+</div>
+
+
+<script>
+
+/* =========================================================
+   PRIVLINES SCHOOL – SCHULEN & SCHULCODES
+   ========================================================= */
+
+(() => {
+    "use strict";
+
+    let schoolModalMode = "create";
+    let schoolCreatedDone = false;
+
+    const $ = id => document.getElementById(id);
+
+    function showSchoolModal(mode) {
+
+        schoolModalMode = mode;
+        schoolCreatedDone = false;
+
+        const modal = $("schoolModal");
+        const createFields = $("schoolCreateFields");
+        const joinFields = $("schoolJoinFields");
+        const title = $("schoolModalTitle");
+        const subtitle = $("schoolModalSubtitle");
+        const submit = $("schoolModalSubmit");
+        const error = $("schoolModalError");
+        const created = $("schoolCreatedCode");
+
+        if (!modal) return;
+
+        error?.classList.remove("visible");
+        error.textContent = "";
+        created?.classList.remove("visible");
+
+        if (mode === "create") {
+            title.textContent = "Schulkanal erstellen";
+            subtitle.textContent = "Erstelle einen Schulkanal für deine Schule. Der Beitrittscode wird einmalig angezeigt.";
+            createFields.style.display = "block";
+            joinFields.style.display = "none";
+            submit.textContent = "Erstellen";
+        } else {
+            title.textContent = "Schulkanal beitreten";
+            subtitle.textContent = "Gib den Beitrittscode ein, den der Ersteller beim Anlegen des Kanals erhalten hat.";
+            createFields.style.display = "none";
+            joinFields.style.display = "block";
+            submit.textContent = "Beitreten";
+        }
+
+        modal.classList.add("visible");
+        modal.setAttribute("aria-hidden", "false");
+
+        setTimeout(() => {
+            if (mode === "create") {
+                $("schoolCreateName")?.focus();
+            } else {
+                $("schoolJoinCode")?.focus();
+            }
+        }, 30);
+    }
+
+    function hideSchoolModal() {
+        const modal = $("schoolModal");
+        if (!modal) return;
+
+        modal.classList.remove("visible");
+        modal.setAttribute("aria-hidden", "true");
+    }
+
+    function schoolError(message) {
+        const error = $("schoolModalError");
+        if (!error) return;
+        error.textContent = message || "Etwas ist schiefgelaufen.";
+        error.classList.add("visible");
+    }
+
+    async function readJson(response) {
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) {
+            throw new Error(data.error || "Serverfehler");
+        }
+        return data;
+    }
+
+    let activeSchoolChannel = null;
+    let schoolSocketReady = false;
+
+    function formatSchoolTime(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return "";
+        return date.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+    }
+
+    function renderSchoolMessages(messages) {
+        const container = $("schoolChannelMessages");
+        if (!container) return;
+        container.innerHTML = "";
+
+        if (!messages?.length) {
+            container.innerHTML = `<div class="school-channel-empty">Noch keine Nachrichten.<br>Schreib die erste Nachricht!</div>`;
+            return;
+        }
+
+        messages.forEach(message => appendSchoolMessage(message, false));
+        container.scrollTop = container.scrollHeight;
+    }
+
+    async function editSchoolMessage(messageId, oldText) {
+        const newText = window.prompt("Nachricht bearbeiten:", oldText || "");
+        if (newText === null) return;
+
+        const text = newText.trim();
+        if (!text || text === oldText) return;
+
+        if (text.length > 5000) {
+            showNotification("Schulkanal", "Die Nachricht darf maximal 5000 Zeichen enthalten.");
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/api/schools/${Number(activeSchoolChannel?.id)}/messages/${encodeURIComponent(Number(messageId))}`,
+                {
+                    method: "PATCH",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text })
+                }
+            );
+
+            const data = await readJson(response);
+            if (!response.ok) {
+                throw new Error(data.error || "Nachricht konnte nicht bearbeitet werden.");
+            }
+
+            applyEditedSchoolMessage(data);
+            showNotification("Schulkanal", "Nachricht wurde bearbeitet.");
+        } catch (error) {
+            console.error("❌ Schulnachricht bearbeiten:", error);
+            showNotification("Schulkanal", error.message || "Nachricht konnte nicht bearbeitet werden.");
+        }
+    }
+
+    function applyEditedSchoolMessage(message) {
+        const container = $("schoolChannelMessages");
+        if (!container || message?.id == null) return;
+        const item = container.querySelector(
+            `[data-school-message-id="${CSS.escape(String(message.id))}"]`
+        );
+        if (!item) return;
+
+        const text = item.querySelector(".school-message-text");
+        if (text) text.textContent = message.text || "";
+
+        if (!item.querySelector(".school-message-edited")) {
+            const label = document.createElement("span");
+            label.className = "school-message-edited";
+            label.textContent = " · bearbeitet";
+            const time = item.querySelector(".school-message-time");
+            if (time) time.appendChild(label);
+        }
+    }
+
+    async function loadSchoolMessages(schoolId) {
+        const response = await fetch(`/api/schools/${schoolId}/messages`, {
+            credentials: "include",
+            cache: "no-store"
+        });
+        const messages = await readJson(response);
+        renderSchoolMessages(messages);
+    }
+
+    function setupSchoolSocket() {
+        if (schoolSocketReady) return true;
+        const socket = window.messengerSocket;
+        if (!socket) return false;
+        schoolSocketReady = true;
+
+        socket.on("schoolChatMessage", message => {
+            if (!activeSchoolChannel || Number(message.schoolId) !== Number(activeSchoolChannel.id)) return;
+            appendSchoolMessage(message);
+        });
+
+        socket.on("schoolMessageEdited", message => {
+            if (!activeSchoolChannel || Number(message.schoolId) !== Number(activeSchoolChannel.id)) return;
+            applyEditedSchoolMessage(message);
+        });
+
+        socket.on("schoolChannelError", data => {
+            console.error("❌ Schulchat:", data?.error);
+        });
+
+        return true;
+    }
+
+    function appendSchoolMessage(message, scroll = true) {
+        const container = $("schoolChannelMessages");
+        if (!container) return;
+        const empty = container.querySelector(".school-channel-empty");
+        if (empty) empty.remove();
+
+        const myId = Number(window.privLinesUser?.userId);
+        if (message?.id && container.querySelector(`[data-school-message-id="${CSS.escape(String(message.id))}"]`)) return;
+        const item = document.createElement("div");
+        item.className = "school-message" + (Number(message.senderId) === myId ? " mine" : "");
+        if (message?.id != null) item.dataset.schoolMessageId = String(message.id);
+
+        const user = document.createElement("div");
+        user.className = "school-message-user";
+        user.textContent = message.username || "Unbekannt";
+
+        const text = document.createElement("div");
+        text.className = "school-message-text";
+        text.textContent = message.text || "";
+
+        const time = document.createElement("div");
+        time.className = "school-message-time";
+        time.textContent = formatSchoolTime(message.createdAt);
+        if (message.edited) {
+            const label = document.createElement("span");
+            label.className = "school-message-edited";
+            label.textContent = " · bearbeitet";
+            time.appendChild(label);
+        }
+
+        item.append(user, text, time);
+
+        if (Number(message.senderId) === myId && message?.id != null) {
+            const actions = document.createElement("div");
+            actions.className = "school-message-actions";
+            const edit = document.createElement("button");
+            edit.type = "button";
+            edit.className = "school-message-edit";
+            edit.textContent = "✏️ Bearbeiten";
+            edit.addEventListener("click", event => {
+                event.stopPropagation();
+                editSchoolMessage(message.id, message.text || "");
+            });
+            actions.appendChild(edit);
+            item.appendChild(actions);
+        }
+
+        container.appendChild(item);
+        if (scroll) container.scrollTop = container.scrollHeight;
+    }
+
+    async function openSchoolChannel(school) {
+        if (!school?.id) return;
+        if (window.privLinesEdition !== "school") return;
+
+        activeSchoolChannel = school;
+        window.privLinesActiveSchoolChannel = activeSchoolChannel;
+        const view = $("schoolChannelView");
+        const title = $("schoolChannelTitle");
+        const subtitle = $("schoolChannelSubtitle");
+        const input = $("schoolChannelInput");
+
+        if (title) title.textContent = school.name || "Schulkanal";
+        if (subtitle) subtitle.textContent = `${Number(school.member_count) || 0} Mitglieder · Schulchat`;
+        if (view) {
+            view.classList.add("visible");
+            view.setAttribute("aria-hidden", "false");
+        }
+
+        const chat = document.getElementById("chat");
+        const sidebar = document.querySelector(".sidebar");
+
+        // Auf Mobilgeräten den gleichen Screen-Wechsel wie beim normalen Chat
+        // durchführen. Dadurch bleiben Eingabefeld und Zurück-Button klickbar.
+        if (window.matchMedia("(max-width: 650px)").matches) {
+            sidebar?.classList.add("mobile-hidden");
+            chat?.classList.add("mobile-visible");
+        }
+        chat?.classList.add("school-channel-open");
+
+        setupSchoolSocket();
+
+        try {
+            if (window.messengerSocket) window.messengerSocket.emit("joinSchoolChannel", Number(school.id));
+            await loadSchoolMessages(school.id);
+            setupSchoolSocket();
+        } catch (error) {
+            console.error("❌ Schulkanal konnte nicht geladen werden:", error);
+            const messages = $("schoolChannelMessages");
+            if (messages) messages.innerHTML = `<div class="school-channel-empty">Nachrichten konnten nicht geladen werden.</div>`;
+        }
+
+        input?.focus();
+    }
+
+    function closeSchoolChannel() {
+        activeSchoolChannel = null;
+        window.privLinesActiveSchoolChannel = null;
+
+        const view = $("schoolChannelView");
+        const chat = document.getElementById("chat");
+        const sidebar = document.querySelector(".sidebar");
+
+        view?.classList.remove("visible");
+        view?.setAttribute("aria-hidden", "true");
+        chat?.classList.remove("school-channel-open");
+        $("schoolChannelInput") && ($("schoolChannelInput").value = "");
+
+        // Auf dem Handy zurück zur Freundes-/Schulkanal-Liste.
+        if (window.matchMedia("(max-width: 650px)").matches) {
+            chat?.classList.remove("mobile-visible");
+            sidebar?.classList.remove("mobile-hidden");
+        }
+    }
+
+    function sendSchoolMessage() {
+        const input = $("schoolChannelInput");
+        const socket = window.messengerSocket;
+        if (!input || !socket || !activeSchoolChannel) return;
+        const text = input.value.trim();
+        if (!text) return;
+        socket.emit("schoolChatMessage", {
+            schoolId: Number(activeSchoolChannel.id),
+            text
+        });
+        input.value = "";
+        input.focus();
+    }
+
+    function renderMySchools(schools) {
+        const container = $("mySchoolList");
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        if (!schools.length) {
+            container.innerHTML = `<div class="school-empty">Du bist noch keinem Schulkanal beigetreten.</div>`;
+            return;
+        }
+
+        schools.forEach(school => {
+            const card = document.createElement("div");
+            card.className = "my-school-card";
+
+            const roleText = school.role === "owner" ? "Ersteller" : "Mitglied";
+            const memberText = Number(school.member_count) === 1
+                ? "1 Mitglied"
+                : `${school.member_count} Mitglieder`;
+
+            card.innerHTML = `
+                <div class="my-school-top">
+                    <div class="my-school-name">🏫 ${escapeHtml(school.name)}</div>
+                    <span style="font-size:10px;color:rgba(255,255,255,.5)">${roleText}</span>
+                </div>
+                <div class="my-school-info">
+                    ${escapeHtml(school.description || "Schulkanal")} · ${memberText}
+                </div>
+            `;
+
+            card.addEventListener("click", () => openSchoolChannel(school));
+            card.style.cursor = "pointer";
+            container.appendChild(card);
+        });
+    }
+
+    function renderSearchResults(schools) {
+        const container = $("schoolSearchResults");
+        if (!container) return;
+
+        container.innerHTML = "";
+
+        if (!schools.length) {
+            container.innerHTML = `<div class="school-empty">Keine passende Schule gefunden.</div>`;
+            return;
+        }
+
+        schools.forEach(school => {
+            const card = document.createElement("div");
+            card.className = "school-result";
+
+            const memberText = Number(school.member_count) === 1
+                ? "1 Mitglied"
+                : `${school.member_count} Mitglieder`;
+
+            card.innerHTML = `
+                <div class="school-result-top">
+                    <div class="school-result-name">🏫 ${escapeHtml(school.name)}</div>
+                    <button class="school-result-button ${school.is_member ? "joined" : ""}" type="button">
+                        ${school.is_member ? "Beigetreten" : "Beitreten"}
+                    </button>
+                </div>
+                <div class="school-result-info">
+                    ${escapeHtml(school.description || "Keine Beschreibung")} · ${memberText}
+                </div>
+            `;
+
+            const button = card.querySelector("button");
+            if (school.is_member) {
+                button.disabled = true;
+            } else {
+                button.addEventListener("click", () => showSchoolModal("join"));
+                // Der Code wird absichtlich nicht aus dem Suchergebnis preisgegeben.
+                // Beitreten erfolgt mit dem vom Kanal-Ersteller ausgegebenen Code.
+            }
+
+            container.appendChild(card);
+        });
+    }
+
+    function escapeHtml(value) {
+        return String(value ?? "")
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+    }
+
+    async function loadMySchools() {
+        if (window.privLinesEdition !== "school") return;
+
+        try {
+            const response = await fetch("/api/my-schools", {
+                credentials: "include",
+                cache: "no-store"
+            });
+
+            const schools = await readJson(response);
+            renderMySchools(schools);
+        } catch (error) {
+            console.error("❌ Eigene Schulkanäle konnten nicht geladen werden:", error);
+        }
+    }
+
+    async function searchSchools() {
+        const input = $("schoolSearchInput");
+        const container = $("schoolSearchResults");
+        const query = input?.value.trim() || "";
+
+        if (query.length < 2) {
+            if (container) {
+                container.innerHTML = `<div class="school-empty">Bitte mindestens 2 Zeichen eingeben.</div>`;
+            }
+            return;
+        }
+
+        try {
+            const response = await fetch(
+                `/api/schools?q=${encodeURIComponent(query)}`,
+                {
+                    credentials: "include",
+                    cache: "no-store"
+                }
+            );
+
+            const schools = await readJson(response);
+            renderSearchResults(schools);
+        } catch (error) {
+            console.error("❌ Schul-Suche fehlgeschlagen:", error);
+            if (container) {
+                container.innerHTML = `<div class="school-empty">Schulen konnten nicht geladen werden.</div>`;
+            }
+        }
+    }
+
+    async function submitSchoolModal() {
+        const submit = $("schoolModalSubmit");
+
+        if (schoolCreatedDone) {
+            hideSchoolModal();
+            loadMySchools();
+            return;
+        }
+
+        submit.disabled = true;
+
+        try {
+            if (schoolModalMode === "create") {
+                const name = $("schoolCreateName")?.value.trim() || "";
+                const description = $("schoolCreateDescription")?.value.trim() || "";
+
+                if (name.length < 2) {
+                    throw new Error("Bitte gib einen gültigen Schulnamen ein.");
+                }
+
+                const response = await fetch("/api/schools", {
+                    method: "POST",
+                    credentials: "include",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ name, description })
+                });
+
+                const school = await readJson(response);
+
+                $("schoolModalTitle").textContent = "🎉 Schulkanal erstellt";
+                $("schoolModalSubtitle").textContent = "Dieser Code wird dir nur jetzt angezeigt. Teile ihn nur mit Personen, die deinem Schulkanal beitreten sollen.";
+                $("schoolCreateFields").style.display = "none";
+                $("schoolCreatedCodeValue").textContent = school.joinCode;
+                $("schoolCreatedCode").classList.add("visible");
+                submit.textContent = "Fertig";
+                schoolCreatedDone = true;
+                submit.disabled = false;
+
+                await loadMySchools();
+                return;
+            }
+
+            const code = $("schoolJoinCode")?.value.trim().toUpperCase() || "";
+
+            if (!code) {
+                throw new Error("Bitte gib einen Schul-Code ein.");
+            }
+
+            const response = await fetch("/api/schools/join", {
+                method: "POST",
+                credentials: "include",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ code })
+            });
+
+            await readJson(response);
+
+            hideSchoolModal();
+            $("schoolJoinCode").value = "";
+            await loadMySchools();
+            await searchSchools();
+
+        } catch (error) {
+            schoolError(error.message);
+        } finally {
+            if (!schoolCreatedDone) {
+                submit.disabled = false;
+            }
+        }
+    }
+
+    async function loadOwnSchoolCodes() {
+        const list = $("schoolCodesList");
+        if (!list) return;
+        list.innerHTML = `<div class="school-empty">Codes werden geladen...</div>`;
+
+        try {
+            const response = await fetch("/api/my-school-channels", { credentials: "include", cache: "no-store" });
+            const schools = await readJson(response);
+            list.innerHTML = "";
+
+            if (!schools.length) {
+                list.innerHTML = `<div class="school-empty">Du hast noch keinen eigenen Schulkanal erstellt.</div>`;
+                return;
+            }
+
+            schools.forEach(school => {
+                const card = document.createElement("div");
+                card.className = "school-code-card";
+                card.innerHTML = `
+                    <div class="school-code-name">🏫 ${escapeHtml(school.name)}</div>
+                    <div class="school-code-value">${escapeHtml(school.joinCode || "—")}</div>
+                    <div class="school-code-meta">Der aktuelle Code wird automatisch nach Ablauf der Rotationszeit erneuert.</div>
+                    <div class="school-code-actions">
+                        <button type="button" data-copy="${escapeHtml(school.joinCode || "")}">Code kopieren</button>
+                        <button type="button" data-refresh="${school.id}">Code sofort ändern</button>
+                    </div>
+                `;
+                card.querySelector("[data-copy]")?.addEventListener("click", async () => {
+                    const code = school.joinCode || "";
+                    try { await navigator.clipboard.writeText(code); showNotification("Schul-Code", "Code wurde kopiert."); }
+                    catch (_) { showNotification("Schul-Code", code); }
+                });
+                card.querySelector("[data-refresh]")?.addEventListener("click", async () => {
+                    try {
+                        const response = await fetch(`/api/schools/${school.id}/regenerate-code`, { method:"POST", credentials:"include" });
+                        await readJson(response);
+                        await loadOwnSchoolCodes();
+                        await loadMySchools();
+                    } catch (error) { showNotification("Schul-Code", error.message || "Code konnte nicht geändert werden."); }
+                });
+                list.appendChild(card);
+            });
+        } catch (error) {
+            list.innerHTML = `<div class="school-empty">Schul-Codes konnten nicht geladen werden.</div>`;
+            console.error("❌ Eigene Schul-Codes:", error);
+        }
+    }
+
+    function openOwnSchoolCodes() {
+        const modal = $("schoolCodesModal");
+        if (!modal) return;
+        modal.classList.add("visible");
+        modal.setAttribute("aria-hidden", "false");
+        loadOwnSchoolCodes();
+    }
+
+    window.privLinesReloadSchools = loadMySchools;
+
+    function initSchoolUI() {
+
+        const schoolSection = $("schoolChannelsSection");
+        const schoolToggle = $("schoolSectionToggle");
+
+        function toggleSchoolSection() {
+            if (!schoolSection) return;
+
+            const collapsed = schoolSection.classList.toggle("collapsed");
+
+            if (schoolToggle) {
+                schoolToggle.setAttribute("aria-expanded", String(!collapsed));
+            }
+        }
+
+        schoolToggle?.addEventListener("click", toggleSchoolSection);
+        schoolToggle?.addEventListener("keydown", event => {
+            if (event.key === "Enter" || event.key === " ") {
+                event.preventDefault();
+                toggleSchoolSection();
+            }
+        });
+
+        $("schoolSearchButton")?.addEventListener("click", searchSchools);
+        $("schoolSearchInput")?.addEventListener("keydown", event => {
+            if (event.key === "Enter") searchSchools();
+        });
+
+        $("createSchoolButton")?.addEventListener("click", () => showSchoolModal("create"));
+        $("joinSchoolButton")?.addEventListener("click", () => showSchoolModal("join"));
+        $("schoolModalCancel")?.addEventListener("click", hideSchoolModal);
+
+        const schoolCodesButton = $("schoolCodesButton");
+        const schoolCodesModal = $("schoolCodesModal");
+
+        schoolCodesButton?.addEventListener("click", openOwnSchoolCodes);
+
+        $("schoolCodesClose")?.addEventListener("click", () => {
+            schoolCodesModal?.classList.remove("visible");
+            schoolCodesModal?.setAttribute("aria-hidden", "true");
+        });
+
+        schoolCodesModal?.addEventListener("click", event => {
+            if (event.target === schoolCodesModal) {
+                schoolCodesModal.classList.remove("visible");
+                schoolCodesModal.setAttribute("aria-hidden", "true");
+            }
+        });
+        $("schoolModalSubmit")?.addEventListener("click", submitSchoolModal);
+
+        $("schoolModal")?.addEventListener("click", event => {
+            if (event.target.id === "schoolModal") hideSchoolModal();
+        });
+
+        $("schoolJoinCode")?.addEventListener("input", event => {
+            event.target.value = event.target.value
+                .toUpperCase()
+                .replace(/[^A-F0-9-]/g, "")
+                .slice(0, 14);
+        });
+
+        $("schoolChannelBack")?.addEventListener("click", closeSchoolChannel);
+        $("schoolChannelSend")?.addEventListener("click", sendSchoolMessage);
+        $("schoolChannelInput")?.addEventListener("keydown", event => {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                sendSchoolMessage();
+            }
+        });
+
+        const schoolSocketPoll = setInterval(() => {
+            if (setupSchoolSocket()) clearInterval(schoolSocketPoll);
+        }, 100);
+
+        window.privLinesEditionReady?.then(user => {
+            if (user?.mode === "school") {
+                loadMySchools();
+            }
+        });
+    }
+
+    if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", initSchoolUI);
+    } else {
+        initSchoolUI();
+    }
+
+})();
+
+</script>
+
+</body>
+
+</html>

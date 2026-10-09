@@ -1,0 +1,947 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>PrivLines</title>
+
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link
+        rel="icon"
+        type="image/png"
+        href="/logo_black.png"
+    >
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        :root {
+
+            --accent: #ffffff;
+
+            --accent-dark: #dddddd;
+
+            --accent-light: #eeeeee;
+
+            --background: #000000;
+
+            --text: #ffffff;
+
+            --text-muted:
+                rgba(255, 255, 255, 0.65);
+
+            --glass:
+                rgba(255, 255, 255, 0.075);
+
+            --glass-border:
+                rgba(255, 255, 255, 0.16);
+        }
+
+
+        /* =========================
+           BODY
+        ========================= */
+
+        body {
+
+            margin: 0;
+
+            min-height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            color:
+                var(--text);
+
+            background:
+                #000000;
+
+            overflow-y: auto;
+
+            padding: 30px 15px;
+        }
+
+
+        /* =========================
+           CONTAINER
+        ========================= */
+
+        .container {
+
+            width: 100%;
+
+            max-width: 900px;
+
+            position: relative;
+
+            z-index: 2;
+        }
+
+
+        /* =========================
+           HAUPT-CARD
+        ========================= */
+
+        .card {
+
+            padding: 45px;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.08),
+                    rgba(255, 255, 255, 0.025)
+                );
+
+            border:
+                1px solid
+                var(--glass-border);
+
+            border-radius: 26px;
+
+            backdrop-filter:
+                blur(30px)
+                saturate(135%);
+
+            -webkit-backdrop-filter:
+                blur(30px)
+                saturate(135%);
+
+            box-shadow:
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.12),
+
+                inset
+                0 -1px 0
+                rgba(255, 255, 255, 0.03),
+
+                0 30px 80px
+                rgba(0, 0, 0, 0.85);
+        }
+
+
+        /* =========================
+           LOGO
+        ========================= */
+
+        .logo-image {
+
+            display: block;
+
+            width: 400px;
+
+            height: 300px;
+
+            object-fit: contain;
+
+            margin:
+                0 auto 20px;
+
+            filter:
+
+                drop-shadow(
+                    0 10px 25px
+                    rgba(0, 0, 0, 0.55)
+                );
+
+            transition:
+                transform 0.25s ease;
+        }
+
+
+        .logo-image:hover {
+
+            transform:
+                translateY(-2px)
+                scale(1.02);
+        }
+
+
+        /* =========================
+           TITEL
+        ========================= */
+
+        h1 {
+
+            margin: 0;
+
+            text-align: center;
+
+            font-size: 30px;
+
+            color:
+                var(--text);
+
+            text-shadow:
+
+                0 2px 15px
+                rgba(0, 0, 0, 0.50);
+        }
+
+
+        .subtitle {
+
+            margin:
+                8px 0 35px;
+
+            text-align: center;
+
+            font-size: 15px;
+
+            font-weight: normal;
+
+            color:
+                var(--text-muted);
+        }
+
+
+        /* =========================
+           EDITIONS
+        ========================= */
+
+        .editions {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(2, 1fr);
+
+            gap: 20px;
+        }
+
+
+        /* =========================
+           EDITION CARD
+        ========================= */
+
+        .edition {
+
+            position: relative;
+
+            padding: 30px;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.13);
+
+            border-radius: 20px;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.065),
+                    rgba(255, 255, 255, 0.025)
+                );
+
+            backdrop-filter:
+                blur(20px);
+
+            -webkit-backdrop-filter:
+                blur(20px);
+
+            cursor: pointer;
+
+            text-align: center;
+
+            transition:
+
+                transform 0.25s ease,
+
+                background 0.25s ease,
+
+                border-color 0.25s ease,
+
+                box-shadow 0.25s ease;
+        }
+
+
+        .edition:hover {
+
+            transform:
+                translateY(-4px);
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.10),
+                    rgba(255, 255, 255, 0.035)
+                );
+
+            border-color:
+                rgba(255, 255, 255, 0.28);
+
+            box-shadow:
+
+                0 20px 45px
+                rgba(0, 0, 0, 0.65),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.10);
+        }
+
+
+        /* =========================
+           ICON
+        ========================= */
+
+        .icon {
+
+            width: 65px;
+
+            height: 65px;
+
+            margin:
+                0 auto 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 18px;
+
+            background:
+                rgba(255, 255, 255, 0.08);
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.15);
+
+            font-size: 30px;
+
+            box-shadow:
+
+                0 10px 25px
+                rgba(0, 0, 0, 0.45),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.10);
+
+            transition:
+                transform 0.25s ease;
+        }
+
+
+        .edition:hover .icon {
+
+            transform:
+                scale(1.04);
+        }
+
+
+        /* =========================
+           EDITION TITEL
+        ========================= */
+
+        .edition h2 {
+
+            margin:
+                0 0 10px;
+
+            font-size: 22px;
+
+            color:
+                #ffffff;
+        }
+
+
+        /* =========================
+           BESCHREIBUNG
+        ========================= */
+
+        .edition p {
+
+            margin:
+                0 0 25px;
+
+            min-height: 48px;
+
+            color:
+                var(--text-muted);
+
+            font-size: 14px;
+
+            line-height: 1.6;
+        }
+
+
+        /* =========================
+           BUTTON
+        ========================= */
+
+        .button {
+
+            display: inline-block;
+
+            width: 100%;
+
+            padding: 13px;
+
+            border:
+                1px solid
+                #ffffff;
+
+            border-radius: 13px;
+
+            background:
+                #ffffff;
+
+            color:
+                #000000;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            box-shadow:
+
+                0 8px 25px
+                rgba(0, 0, 0, 0.55),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.28);
+
+            transition:
+                0.2s;
+        }
+
+
+        .edition:hover .button {
+
+            transform:
+                translateY(-1px);
+
+            background:
+                #eeeeee;
+
+            border-color:
+                #ffffff;
+
+            box-shadow:
+
+                0 12px 30px
+                rgba(0, 0, 0, 0.70),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.32);
+        }
+
+
+        /* =========================
+           FOOTER
+        ========================= */
+
+        .footer {
+
+            margin-top: 30px;
+
+            text-align: center;
+
+            color:
+                rgba(255, 255, 255, 0.35);
+
+            font-size: 12px;
+        }
+
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (max-width: 700px) {
+
+            body {
+
+                padding:
+                    20px 12px;
+            }
+
+
+            .card {
+
+                padding:
+                    30px 20px;
+
+                border-radius:
+                    22px;
+            }
+
+
+            h1 {
+
+                font-size:
+                    26px;
+
+                line-height:
+                    1.3;
+            }
+
+
+            .subtitle {
+
+                margin-bottom:
+                    25px;
+            }
+
+
+            .editions {
+
+                grid-template-columns:
+                    1fr;
+
+                gap:
+                    15px;
+            }
+
+
+            .edition {
+
+                padding:
+                    25px 20px;
+            }
+
+
+            .edition p {
+
+                min-height:
+                    auto;
+            }
+
+        }
+
+
+        @media (max-width: 400px) {
+
+            .logo-image {
+
+                width:
+                    300px;
+
+                height:
+                    200px;
+            }
+
+        }
+
+    
+        /* =========================
+           PRIVLINES AMBIENT ANIMATION
+        ========================= */
+
+        body::before {
+            content: "";
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            background:
+                radial-gradient(circle at 50% 45%, rgba(255,255,255,.055), transparent 32%),
+                radial-gradient(circle at 15% 85%, rgba(120,120,255,.045), transparent 28%),
+                radial-gradient(circle at 85% 15%, rgba(255,255,255,.035), transparent 25%);
+            animation: ambientPulse 8s ease-in-out infinite alternate;
+        }
+
+        .ambient-bg {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .orb {
+            position: absolute;
+            width: 420px;
+            height: 420px;
+            border-radius: 50%;
+            filter: blur(90px);
+            opacity: .18;
+            will-change: transform;
+        }
+
+        .orb-1 {
+            left: -180px;
+            top: -160px;
+            background: #ffffff;
+            animation: orbOne 13s ease-in-out infinite alternate;
+        }
+
+        .orb-2 {
+            right: -180px;
+            bottom: -180px;
+            background: #7777ff;
+            animation: orbTwo 16s ease-in-out infinite alternate;
+        }
+
+        .orb-3 {
+            left: 40%;
+            top: 65%;
+            width: 260px;
+            height: 260px;
+            background: #aaaaaa;
+            opacity: .10;
+            animation: orbThree 11s ease-in-out infinite alternate;
+        }
+
+        .grid-glow {
+            position: absolute;
+            inset: -20%;
+            opacity: .16;
+            background-image:
+                linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+            background-size: 70px 70px;
+            transform: perspective(700px) rotateX(60deg) translateY(25%);
+            mask-image: linear-gradient(to top, black, transparent 65%);
+            animation: gridMove 18s linear infinite;
+        }
+
+        .particle {
+            position: absolute;
+            width: 3px;
+            height: 3px;
+            border-radius: 50%;
+            background: #fff;
+            box-shadow: 0 0 14px 4px rgba(255,255,255,.35);
+            opacity: 0;
+            animation: particleFloat 7s ease-in-out infinite;
+        }
+
+        .p1 { left: 8%;  top: 70%; animation-delay: 0s; }
+        .p2 { left: 18%; top: 25%; animation-delay: 1.2s; }
+        .p3 { left: 31%; top: 82%; animation-delay: 2.4s; }
+        .p4 { left: 47%; top: 18%; animation-delay: 3.1s; }
+        .p5 { left: 62%; top: 74%; animation-delay: 1.7s; }
+        .p6 { left: 76%; top: 30%; animation-delay: 4s; }
+        .p7 { left: 88%; top: 67%; animation-delay: 2.9s; }
+        .p8 { left: 54%; top: 48%; animation-delay: 5s; }
+
+        .container {
+            animation: pageIn .9s cubic-bezier(.16,1,.3,1) both;
+        }
+
+        .card {
+            animation: cardIn 1s cubic-bezier(.16,1,.3,1) .08s both;
+        }
+
+        .logo-image {
+            animation: logoFloat 5s ease-in-out 1s infinite;
+        }
+
+        h1 {
+            animation: textReveal .8s ease-out .25s both;
+        }
+
+        .subtitle {
+            animation: textReveal .8s ease-out .38s both;
+        }
+
+        .edition {
+            opacity: 0;
+            animation: editionIn .75s cubic-bezier(.16,1,.3,1) forwards;
+        }
+
+        .edition:nth-child(1) { animation-delay: .48s; }
+        .edition:nth-child(2) { animation-delay: .62s; }
+
+        .edition::after {
+            content: "";
+            position: absolute;
+            inset: -1px;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(
+                120deg,
+                transparent 20%,
+                rgba(255,255,255,.55) 45%,
+                transparent 70%
+            );
+            background-size: 250% 100%;
+            opacity: 0;
+            pointer-events: none;
+            -webkit-mask:
+                linear-gradient(#000 0 0) content-box,
+                linear-gradient(#000 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+        }
+
+        .edition:hover::after {
+            opacity: 1;
+            animation: shineSweep 1.1s ease;
+        }
+
+        .edition:active {
+            transform: translateY(-1px) scale(.985);
+            transition-duration: .08s;
+        }
+
+        .icon {
+            animation: iconIdle 4s ease-in-out infinite;
+        }
+
+        .edition:nth-child(2) .icon {
+            animation-delay: .8s;
+        }
+
+        @keyframes ambientPulse {
+            from { opacity: .65; }
+            to   { opacity: 1; }
+        }
+
+        @keyframes orbOne {
+            0%   { transform: translate3d(0,0,0) scale(1); }
+            50%  { transform: translate3d(120px,80px,0) scale(1.12); }
+            100% { transform: translate3d(40px,170px,0) scale(.94); }
+        }
+
+        @keyframes orbTwo {
+            0%   { transform: translate3d(0,0,0) scale(1); }
+            50%  { transform: translate3d(-130px,-70px,0) scale(1.14); }
+            100% { transform: translate3d(-20px,-160px,0) scale(.92); }
+        }
+
+        @keyframes orbThree {
+            from { transform: translate3d(-100px,20px,0); }
+            to   { transform: translate3d(120px,-90px,0); }
+        }
+
+        @keyframes gridMove {
+            from { transform: perspective(700px) rotateX(60deg) translateY(25%) translateX(0); }
+            to   { transform: perspective(700px) rotateX(60deg) translateY(31%) translateX(-70px); }
+        }
+
+        @keyframes particleFloat {
+            0%   { opacity: 0; transform: translate3d(0,25px,0) scale(.5); }
+            20%  { opacity: .7; }
+            70%  { opacity: .35; }
+            100% { opacity: 0; transform: translate3d(25px,-100px,0) scale(1.25); }
+        }
+
+        @keyframes pageIn {
+            from { opacity: 0; transform: scale(.985); }
+            to   { opacity: 1; transform: scale(1); }
+        }
+
+        @keyframes cardIn {
+            from { opacity: 0; transform: translateY(28px) scale(.97); filter: blur(8px); }
+            to   { opacity: 1; transform: translateY(0) scale(1); filter: blur(0); }
+        }
+
+        @keyframes textReveal {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes editionIn {
+            from { opacity: 0; transform: translateY(24px) scale(.96); }
+            to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        @keyframes logoFloat {
+            0%, 100% { transform: translateY(0) scale(1); }
+            50%      { transform: translateY(-7px) scale(1.015); }
+        }
+
+        @keyframes iconIdle {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            50%      { transform: translateY(-3px) rotate(1deg); }
+        }
+
+        @keyframes shineSweep {
+            from { background-position: 200% 0; }
+            to   { background-position: -50% 0; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: .01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+    <div class="ambient-bg" aria-hidden="true">
+        <span class="orb orb-1"></span>
+        <span class="orb orb-2"></span>
+        <span class="orb orb-3"></span>
+        <span class="grid-glow"></span>
+        <span class="particle p1"></span><span class="particle p2"></span>
+        <span class="particle p3"></span><span class="particle p4"></span>
+        <span class="particle p5"></span><span class="particle p6"></span>
+        <span class="particle p7"></span><span class="particle p8"></span>
+    </div>
+
+
+
+<div class="container">
+
+
+    <div class="card">
+
+
+        <!-- LOGO -->
+
+        <img
+            src="/text_logo2.png"
+            class="logo-image"
+            alt="PrivLines Logo"
+        >
+
+
+        <!-- TITEL -->
+
+        <h1>
+            Wie möchten Sie PrivLines nutzen?
+        </h1>
+
+
+        <p class="subtitle">
+            Wählen Sie die passende Edition
+        </p>
+
+
+        <!-- EDITIONS -->
+
+        <div class="editions">
+
+
+            <!-- STANDARD -->
+
+            <div
+                class="edition"
+                onclick="openEdition('standard')"
+            >
+
+                <div class="icon">
+                    👤
+                </div>
+
+
+                <h2>
+                    Standard Edition
+                </h2>
+
+
+                <p>
+                    PrivLines für private Kommunikation,
+                    Freunde und persönliche Chats.
+                </p>
+
+
+                <span class="button">
+                    Standard öffnen
+                </span>
+
+            </div>
+
+
+            <!-- SCHOOL -->
+
+            <div
+                class="edition"
+                onclick="openEdition('school')"
+            >
+
+                <div class="icon">
+                    🏫
+                </div>
+
+
+                <h2>
+                    School Edition
+                </h2>
+
+
+                <p>
+                    PrivLines für Schulen, Klassen,
+                    Lehrer und Schüler.
+                </p>
+
+
+                <span class="button">
+                    School öffnen
+                </span>
+
+            </div>
+
+
+        </div>
+
+
+        <div class="footer">
+
+            © PrivLines
+
+        </div>
+
+
+    </div>
+
+</div>
+
+
+<script>
+
+    function openEdition(edition) {
+
+        if (edition === "standard") {
+
+            window.location.href =
+                "/login.html";
+
+        }
+
+
+        if (edition === "school") {
+
+            window.location.href =
+                "/school-login.html";
+
+        }
+
+    }
+
+</script>
+
+
+</body>
+
+</html>

@@ -1,0 +1,694 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Login – PrivLines</title>
+
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link
+        rel="icon"
+        type="image/png"
+        href="/logo_black.png"
+    >
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+        :root {
+            --accent: #ffffff;
+            --accent-dark: #dddddd;
+            --accent-light: #eeeeee;
+
+            --background: #000000;
+
+            --text: #ffffff;
+
+            --text-muted:
+                rgba(255, 255, 255, 0.65);
+
+            --glass:
+                rgba(255, 255, 255, 0.075);
+
+            --glass-border:
+                rgba(255, 255, 255, 0.16);
+        }
+
+
+        /* =========================
+           BODY
+        ========================= */
+
+        body {
+
+            margin: 0;
+
+            min-height: 100vh;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            color:
+                var(--text);
+
+            overflow: hidden;
+
+            background:
+                #000000;
+        }
+
+
+        /* =========================
+           KEINE HINTERGRUNDLICHTER
+        ========================= */
+
+        body::before,
+        body::after {
+
+            content: none;
+
+        }
+
+
+        /* =========================
+           CONTAINER
+        ========================= */
+
+        .container {
+
+            width: 100%;
+
+            max-width: 420px;
+
+            padding: 20px;
+
+            position: relative;
+
+            z-index: 2;
+
+        }
+
+
+        /* =========================
+           GLASS CARD
+        ========================= */
+
+        .card {
+
+            padding: 40px;
+
+            background:
+
+                linear-gradient(
+                    135deg,
+                    rgba(255, 255, 255, 0.08),
+                    rgba(255, 255, 255, 0.025)
+                );
+
+            border:
+                1px solid
+                var(--glass-border);
+
+            border-radius: 26px;
+
+            backdrop-filter:
+                blur(30px)
+                saturate(135%);
+
+            -webkit-backdrop-filter:
+                blur(30px)
+                saturate(135%);
+
+            box-shadow:
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.12),
+
+                inset
+                0 -1px 0
+                rgba(255, 255, 255, 0.03),
+
+                0 30px 80px
+                rgba(0, 0, 0, 0.85);
+        }
+
+
+        /* =========================
+           LOGO
+        ========================= */
+
+        .logo {
+
+            width: 65px;
+
+            height: 65px;
+
+            margin:
+                0 auto 20px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: center;
+
+            border-radius: 19px;
+
+            background:
+                #ffffff;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.22);
+
+            color:
+                #000000;
+
+            font-size: 28px;
+
+            font-weight: bold;
+
+            box-shadow:
+
+                0 12px 35px
+                rgba(0, 0, 0, 0.65),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.30);
+
+            transition:
+
+                transform 0.25s ease,
+
+                background 0.25s ease,
+
+                box-shadow 0.25s ease;
+        }
+
+
+        .logo:hover {
+
+            transform:
+                translateY(-2px)
+                scale(1.03);
+
+            background:
+                #eeeeee;
+
+            box-shadow:
+
+                0 16px 40px
+                rgba(0, 0, 0, 0.75),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.35);
+        }
+
+
+        /* =========================
+           TEXT
+        ========================= */
+
+        h1 {
+
+            margin: 0;
+
+            text-align: center;
+
+            font-size: 30px;
+
+            color:
+                var(--text);
+
+            text-shadow:
+
+                0 2px 15px
+                rgba(0, 0, 0, 0.50);
+        }
+
+
+        h2 {
+
+            margin:
+                8px 0 30px;
+
+            text-align: center;
+
+            font-size: 15px;
+
+            font-weight: normal;
+
+            color:
+                var(--text-muted);
+        }
+
+
+        /* =========================
+           FORM
+        ========================= */
+
+        .form-group {
+
+            margin-bottom: 20px;
+
+        }
+
+
+        label {
+
+            display: block;
+
+            margin-bottom: 8px;
+
+            font-size: 14px;
+
+            font-weight: bold;
+
+            color:
+                rgba(255, 255, 255, 0.84);
+        }
+
+
+        /* =========================
+           INPUT
+        ========================= */
+
+        input {
+
+            width: 100%;
+
+            padding:
+                14px 15px;
+
+            border:
+                1px solid
+                rgba(255, 255, 255, 0.15);
+
+            border-radius: 13px;
+
+            outline: none;
+
+            background:
+                rgba(255, 255, 255, 0.055);
+
+            backdrop-filter:
+                blur(16px);
+
+            -webkit-backdrop-filter:
+                blur(16px);
+
+            color:
+                var(--text);
+
+            font-size: 15px;
+
+            box-shadow:
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.06);
+
+            transition:
+                0.2s;
+        }
+
+
+        input::placeholder {
+
+            color:
+                rgba(255, 255, 255, 0.35);
+        }
+
+
+        input:hover {
+
+            background:
+                rgba(255, 255, 255, 0.075);
+
+            border-color:
+                rgba(255, 255, 255, 0.22);
+        }
+
+
+        input:focus {
+
+            background:
+                rgba(255, 255, 255, 0.09);
+
+            border-color:
+                rgba(255, 255, 255, 0.75);
+
+            box-shadow:
+
+                0 0 0 3px
+                rgba(255, 255, 255, 0.10),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.08),
+
+                0 0 22px
+                rgba(255, 255, 255, 0.06);
+        }
+
+
+        /* =========================
+           BUTTON
+        ========================= */
+
+        button {
+
+            width: 100%;
+
+            padding: 14px;
+
+            border:
+                1px solid
+                #ffffff;
+
+            border-radius: 13px;
+
+            background:
+                #ffffff;
+
+            color:
+                #000000;
+
+            font-size: 15px;
+
+            font-weight: bold;
+
+            cursor: pointer;
+
+            box-shadow:
+
+                0 8px 25px
+                rgba(0, 0, 0, 0.55),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.28);
+
+            transition:
+                0.2s;
+        }
+
+
+        button:hover {
+
+            transform:
+                translateY(-1px);
+
+            background:
+                #eeeeee;
+
+            color:
+                #000000;
+
+            border-color:
+                #ffffff;
+
+            box-shadow:
+
+                0 12px 30px
+                rgba(0, 0, 0, 0.70),
+
+                inset
+                0 1px 0
+                rgba(255, 255, 255, 0.32);
+        }
+
+
+        button:active {
+
+            transform:
+                translateY(0);
+
+        }
+
+
+        /* =========================
+           FEHLER
+        ========================= */
+
+        #message {
+
+            display: none;
+
+            margin-top: 15px;
+
+            padding: 12px;
+
+            border-radius: 11px;
+
+            background:
+                rgba(239, 68, 68, 0.10);
+
+            border:
+                1px solid
+                rgba(239, 68, 68, 0.22);
+
+            backdrop-filter:
+                blur(15px);
+
+            -webkit-backdrop-filter:
+                blur(15px);
+
+            color:
+                #fca5a5;
+
+            text-align: center;
+
+            font-size: 14px;
+        }
+
+
+        /* =========================
+           REGISTRIERUNG
+        ========================= */
+
+        .register {
+
+            margin-top: 25px;
+
+            text-align: center;
+
+            color:
+                var(--text-muted);
+
+            font-size: 14px;
+        }
+
+
+        .register a {
+
+            color:
+                #ffffff;
+
+            text-decoration: none;
+
+            font-weight: bold;
+
+            transition:
+                0.2s;
+
+            text-shadow:
+                0 0 12px
+                rgba(255, 255, 255, 0.12);
+        }
+
+
+        .register a:hover {
+
+            color:
+                #dddddd;
+
+            text-decoration:
+                underline;
+        }
+
+
+        /* =========================
+           MOBILE
+        ========================= */
+
+        @media (max-width: 480px) {
+
+            .container {
+
+                padding: 15px;
+
+            }
+
+
+            .card {
+
+                padding:
+                    30px 22px;
+
+                border-radius: 22px;
+
+            }
+
+
+            h1 {
+
+                font-size: 26px;
+
+            }
+
+        }
+
+
+        .logo-image {
+
+            display: block;
+
+            width: 200px;
+
+            height: 100px;
+
+            object-fit: contain;
+
+            margin:
+                0 auto 20px;
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+<div class="container">
+
+
+    <div class="card">
+
+
+        <img
+            src="/text_logo.png"
+            class="logo-image"
+            alt="PrivLines Logo"
+        >
+
+
+        <h2>
+
+            Melde dich an, um weiterzuchatten.
+
+        </h2>
+
+
+        <form id="loginForm">
+
+
+            <div class="form-group">
+
+
+                <label for="username">
+
+                    Benutzername
+
+                </label>
+
+
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Dein Benutzername"
+                    autocomplete="username"
+                    required
+                >
+
+
+            </div>
+
+
+            <div class="form-group">
+
+
+                <label for="password">
+
+                    Passwort
+
+                </label>
+
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Dein Passwort"
+                    autocomplete="current-password"
+                    required
+                >
+
+
+            </div>
+
+
+            <button type="submit">
+
+                Anmelden
+
+            </button>
+
+
+        </form>
+
+
+        <p id="message"></p>
+
+
+        <div class="register">
+
+            Noch keinen Account?
+
+            <a href="/register.html">
+
+                Jetzt registrieren
+
+            </a>
+            Schüler?
+            <a href="school-login.html">Hier anmelden</a>
+
+        </div>
+
+
+    </div>
+
+
+</div>
+
+
+<script src="/crypto.js"></script>
+
+<script src="/login.js"></script>
+
+
+</body>
+
+</html>
