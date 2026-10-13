@@ -509,6 +509,13 @@ async function openChat(friend) {
         return;
     }
 
+    // Show the selected chat immediately on mobile; data loading continues below.
+    if (window.innerWidth <= 650) {
+        sidebar?.classList.add("mobile-hidden");
+        chat?.classList.add("mobile-visible");
+        document.body.classList.add("mobile-chat-open");
+    }
+
     /*
      * Alten Chat verlassen
      */
@@ -2735,16 +2742,24 @@ async function registerBackgroundPush() {
             });
         }
 
-        await fetch("/api/push/subscribe", {
+        const saveResponse = await fetch("/api/push/subscribe", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subscription: subscription.toJSON() })
         });
+        if (!saveResponse.ok) {
+            const details = await saveResponse.json().catch(() => ({}));
+            throw new Error(details.error || `Push-Abo konnte nicht gespeichert werden (HTTP ${saveResponse.status}).`);
+        }
     } catch (error) {
         console.warn("Hintergrund-Benachrichtigungen konnten nicht eingerichtet werden:", error);
     }
 }
+
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") registerBackgroundPush();
+});
 
 function requestPushPermissionFromUserGesture() {
     if (!("Notification" in window) || Notification.permission !== "default") return;

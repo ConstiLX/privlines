@@ -6,7 +6,13 @@ self.addEventListener("push", event => {
     } catch {}
 
     const call = data.kind === "call";
-    const options = {
+    // Socket.IO handles in-app alerts while PrivLines is visible. Keep push for background/closed windows.
+    event.waitUntil((async () => {
+        const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const visibleClient = windows.some(client => client.visibilityState === "visible" && client.focused);
+        if (visibleClient) return;
+
+        const options = {
         body: data.body || (call ? "Du wirst angerufen." : "Du hast eine neue Nachricht."),
         icon: "/privlines-192.png",
         badge: "/privlines-192.png",
@@ -16,7 +22,8 @@ self.addEventListener("push", event => {
         data: { url: data.url || "/login.html", callId: data.callId || null },
         ...(call ? { actions: [{ action: "open", title: "PrivLines öffnen" }] } : {})
     };
-    event.waitUntil(self.registration.showNotification(data.title || "PrivLines", options));
+        await self.registration.showNotification(data.title || "PrivLines", options);
+    })());
 });
 
 self.addEventListener("notificationclick", event => {
