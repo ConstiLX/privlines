@@ -953,13 +953,11 @@ app.post(
                         messageType === "video" ? "🎥 Video" : "📷 Bild"
                 }
             );
-            if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
-                void pushToUser(receiverId, req.user.mode, {
+            void pushToUser(receiverId, req.user.mode, {
                     title: req.user.username || "PrivLines",
                     body: "Du hast eine neue Nachricht in PrivLines.",
                     url: "/chat.html"
                 });
-            }
 
             return res.json({
                 success:
@@ -1036,12 +1034,10 @@ app.post("/api/upload/audio", authenticateToken, uploadVoiceMessage.single("audi
             chatId, senderId: userId, senderUsername: req.user.username,
             senderDisplayName: req.user.displayName || req.user.username, text: '🎙️ Sprachnachricht'
         });
-        if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
-            void pushToUser(receiverId, 'standard', {
+        void pushToUser(receiverId, 'standard', {
                 title: req.user.displayName || req.user.username || 'PrivLines',
                 body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
             });
-        }
         return res.json({ success: true, blocked: false, message });
     } catch (error) {
         console.error('❌ Sprachnachricht-Upload-Fehler:', error);
@@ -6738,13 +6734,11 @@ io.on(
                                 text
                         }
                     );
-                    if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
-                        void pushToUser(receiverId, mode, {
+                    void pushToUser(receiverId, mode, {
                             title: displayName || username || "PrivLines",
                             body: "Du hast eine neue Nachricht in PrivLines.",
                             url: "/chat.html"
                         });
-                    }
 
                 } catch (error) {
 
@@ -7169,7 +7163,7 @@ io.on(
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
             const recipientRoom = `user-${toUserId}`;
             const recipientOnline = !!io.sockets.adapter.rooms.get(recipientRoom)?.size;
-            if (!recipientOnline && typeof data?.callId === "string" && data.callId && data.offer) {
+            if (typeof data?.callId === "string" && data.callId && data.offer) {
                 try {
                     await db.execute(`
                         INSERT INTO pending_call_offers
@@ -7188,15 +7182,13 @@ io.on(
                 video: !!data.video,
                 offer: data.offer
             });
-            if (!recipientOnline) {
-                await pushToUser(toUserId, mode, {
-                    kind: "call",
-                    title: `Anruf von ${displayName}`,
-                    body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
-                    callId: String(data.callId || ""),
-                    url: "/chat.html"
-                });
-            }
+            await pushToUser(toUserId, mode, {
+                kind: "call",
+                title: `Anruf von ${displayName}`,
+                body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
+                callId: String(data.callId || ""),
+                url: "/chat.html"
+            });
         });
 
         socket.on("call:fetch-pending", async () => {
@@ -7306,9 +7298,9 @@ io.on(
                             fromUsername: displayName,
                             video: !!data.video
                         });
-                        continue;
                     }
 
+                    // Persist the invite even when a socket exists: mobile browsers may be suspended.
                     await db.execute(`
                         INSERT INTO pending_group_call_invites
                             (call_id, recipient_user_id, mode, group_id, caller_user_id, caller_name, video, expires_at)
