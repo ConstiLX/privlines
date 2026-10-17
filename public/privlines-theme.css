@@ -125,3 +125,68 @@ body:has(.container) .logo { background: linear-gradient(135deg,#fff,#777) !impo
 @keyframes pl-message-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
 @media(max-width:650px) { .app { gap: 0; padding: 8px; }.sidebar,.chat { border-radius: 20px; }.search-container { padding: 12px; }.search { gap: 7px; }.search input,#usernameInput { min-height: 44px; }.search > button,#searchButton { min-height: 44px; padding: 0 14px; }.chat-header { padding-inline: 12px; } }
 @media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
+/* Polished controls and purposeful motion */
+:where(button,.button,.school-result-button,.standard-group-create,.group-add-members-button) {
+    min-height: 40px;
+    -webkit-tap-highlight-color: transparent;
+    transform: translateZ(0);
+}
+:where(button,.button,.school-result-button,.standard-group-create,.group-add-members-button):not(:disabled):active {
+    transform: translateY(1px) scale(.97) !important;
+    box-shadow: inset 0 2px 5px rgba(0,0,0,.22) !important;
+}
+:where(button,.button,.school-result-button,.standard-group-create,.group-add-members-button):disabled {
+    cursor: not-allowed;
+    filter: saturate(.35);
+}
+.search { align-items: center; gap: 9px; }
+.search > button,#searchButton { min-width: 82px; letter-spacing: .01em; }
+.chat-header { gap: 12px; }
+.chat-user { gap: 12px; }
+.call-buttons,.chat-header-actions { flex: 0 0 auto; align-items: center; gap: 8px; }
+.call-buttons { margin-left: auto; }
+.chat-header-actions { margin-left: 0; }
+.call-button,.chat-action-button,.mobile-back-button,.school-channel-back,.group-view-back {
+    width: 42px; min-width: 42px; height: 42px; display: inline-grid; place-items: center;
+    padding: 0; line-height: 1; transition: transform .2s cubic-bezier(.2,.8,.2,1),background .2s ease,border-color .2s ease,box-shadow .2s ease;
+}
+.call-button:hover:not(:disabled),.chat-action-button:hover:not(:disabled),.mobile-back-button:hover:not(:disabled),.school-channel-back:hover:not(:disabled),.group-view-back:hover:not(:disabled) {
+    transform: translateY(-2px) scale(1.04); box-shadow: 0 7px 20px rgba(255,255,255,.08);
+}
+.call-button:active:not(:disabled),.chat-action-button:active:not(:disabled) { transform: scale(.94); }
+.message-area,.school-channel-input-area,.group-input-area { gap: 9px; padding: 12px 14px; }
+#voiceButton,#photoButton { width: 42px; min-width: 42px; height: 42px; display: inline-grid; place-items: center; padding: 0; }
+#voiceButton img,#photoButton img { width: 19px; height: 19px; object-fit: contain; transition: transform .2s ease,filter .2s ease; }
+#voiceButton:hover:not(:disabled) img,#photoButton:hover:not(:disabled) img { transform: scale(1.12) rotate(-4deg); filter: brightness(1.2); }
+#voiceButton.recording { animation: pl-record-pulse 1.35s ease-in-out infinite; }
+#messageInput { min-height: 44px; height: 44px; padding-inline: 15px; transition: border-color .2s ease,background .2s ease,box-shadow .2s ease; }
+#messageInput:focus { border-color: rgba(255,255,255,.38) !important; background: #141414 !important; box-shadow: 0 0 0 3px rgba(255,255,255,.055) !important; }
+#sendButton,#schoolChannelSend,#groupSendButton { min-width: 48px; width: 48px; height: 44px; display: inline-grid; place-items: center; padding: 0; font-size: 19px; transition: transform .18s cubic-bezier(.2,.8,.2,1),background .2s ease,box-shadow .2s ease; }
+#sendButton:hover:not(:disabled),#schoolChannelSend:hover:not(:disabled),#groupSendButton:hover:not(:disabled) { box-shadow: 0 8px 23px rgba(255,255,255,.14); }
+#searchResult .search-result { animation: pl-result-in .34s cubic-bezier(.2,.8,.2,1) both; }
+#searchResult .search-loading { display: flex; align-items: center; gap: 9px; }
+#searchResult .search-loading::before { width: 14px; height: 14px; border: 2px solid #555; border-top-color: #fff; border-radius: 50%; content: ""; animation: pl-spin .75s linear infinite; }
+.friend { animation: pl-fade-up .28s ease both; }
+.feature-menu.open { animation: pl-menu-in .18s ease both; transform-origin: top right; }
+.notification { animation: pl-notice-in .28s cubic-bezier(.2,.8,.2,1) both; }
+.group-modal-card,.school-modal-card,.school-codes-card { animation: pl-menu-in .22s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes pl-spin { to { transform: rotate(360deg); } }
+@keyframes pl-result-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pl-fade-up { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pl-menu-in { from { opacity: 0; transform: translateY(-5px) scale(.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pl-notice-in { from { opacity: 0; transform: translateY(12px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes pl-record-pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(255,255,255,.22); } 50% { box-shadow: 0 0 0 6px rgba(255,255,255,0); } }
+@media(max-width:650px) {
+    .chat-header { gap: 7px; padding-inline: 10px; }
+    .chat-user { gap: 8px; }
+    .call-buttons,.chat-header-actions { gap: 5px; }
+    .call-button,.chat-action-button { width: 38px; min-width: 38px; height: 38px; border-radius: 11px !important; }
+    .message-area,.school-channel-input-area,.group-input-area { gap: 7px; padding: 10px; }
+    #voiceButton,#photoButton { width: 40px; min-width: 40px; height: 40px; }
+    #messageInput { min-height: 42px; height: 42px; padding-inline: 11px; }
+    #sendButton,#schoolChannelSend,#groupSendButton { min-width: 42px; width: 42px; height: 42px; }
+}
+@media(prefers-reduced-motion:reduce) {
+    #voiceButton.recording { animation: none !important; }
+    #searchResult .search-loading::before { animation: none !important; }
+}
