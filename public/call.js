@@ -951,13 +951,6 @@
 
             if (currentCall) {
 
-                if (currentCall.callId === data.callId) {
-                    window.PrivLinesNative?.clearIncomingCall?.(data.callId);
-                    return;
-                }
-
-                window.PrivLinesNative?.clearIncomingCall?.(data.callId);
-
                 socket.emit(
                     "call:reject",
                     {
@@ -1000,6 +993,13 @@
             );
 
             if (currentCall) {
+
+                if (currentCall.callId === data.callId) {
+                    window.PrivLinesNative?.clearIncomingCall?.(data.callId);
+                    return;
+                }
+
+                window.PrivLinesNative?.clearIncomingCall?.(data.callId);
 
                 socket.emit(
                     "call:busy",

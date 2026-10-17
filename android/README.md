@@ -24,7 +24,7 @@ Nach der Anmeldung in der nativen App wird das FCM-Gerätetoken an `/api/push/an
 
 ## Hosting auf Render
 
-PrivLines wird vorerst auf Render als **Web Service** gehostet; GitHub bleibt das Quellcode-Repository. Das Backend startet mit `npm start` (im Repository ist das `node server/server.js`) und benötigt die Umgebungsvariablen aus der bestehenden Serverkonfiguration, insbesondere Datenbank-Zugangsdaten, `JWT_SECRET`, VAPID-Schlüssel und für native Anruf-Pushes `FIREBASE_SERVICE_ACCOUNT_BASE64`. Secrets gehören in Render in **Environment**, nicht ins GitHub-Repository.
+PrivLines wird vorerst auf Render als **Web Service** gehostet; GitHub bleibt das Quellcode-Repository. Im Render-Service `npm ci` als **Build Command** und `npm start` als **Start Command** eintragen (`npm start` führt `node server/server.js` aus). Das Backend benötigt die Umgebungsvariablen aus der bestehenden Serverkonfiguration, insbesondere Datenbank-Zugangsdaten, `JWT_SECRET`, VAPID-Schlüssel und für native Anruf-Pushes `FIREBASE_SERVICE_ACCOUNT_BASE64`. Secrets gehören in Render in **Environment**, nicht ins GitHub-Repository.
 
 Für Profilbilder und Chat-/Sprachdateien reicht das Standard-Dateisystem eines Render-Web-Services nicht: Render setzt es bei Neustarts und Deployments zurück. Render dokumentiert persistente Disks für kostenpflichtige Web Services; dazu muss ein Disk-Mount-Pfad eingerichtet und `PRIVLINES_UPLOADS_DIR` auf genau diesen Pfad gesetzt werden, zum Beispiel `/var/data/privlines-uploads`. Ohne persistenten Speicher gehen Uploads bei einem Neustart oder Deployment verloren. Die existierende Datenbank bleibt separat und muss für Render erreichbar sein.
 
