@@ -267,7 +267,40 @@ button:disabled{
     margin-top:8px;
 }
 
+.user-directory-tabs{
+    display:flex;
+    gap:8px;
+    margin-top:10px;
+}
 
+.user-directory-tab{
+    flex:1;
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:12px;
+    padding:9px 12px;
+    background:rgba(255,255,255,.05);
+    color:rgba(255,255,255,.72);
+    font-weight:800;
+    cursor:pointer;
+    transition:.18s ease;
+}
+
+.user-directory-tab:hover{
+    background:rgba(255,255,255,.09);
+    color:#fff;
+}
+
+.user-directory-tab.active{
+    background:rgba(125,249,255,.14);
+    border-color:rgba(125,249,255,.42);
+    color:#7df9ff;
+}
+
+.all-users-list{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+}
 
 .all-user-card{
     display:flex;
@@ -320,6 +353,14 @@ button:disabled{
 
 .all-user-action{
     flex-shrink:0;
+}
+
+.all-users-loading,
+.all-users-empty{
+    padding:14px;
+    text-align:center;
+    color:rgba(255,255,255,.62);
+    font-size:13px;
 }
 
 .search-result{
@@ -3003,6 +3044,12 @@ body{
 .search > button:hover,#searchButton:hover,#schoolSearchButton:hover{
     background:#e9e9e9;transform:translateY(-1px)
 }
+.user-directory-tabs{gap:7px}
+.user-directory-tab{
+    min-height:40px;border-color:rgba(255,255,255,.12);
+    border-radius:12px;background:rgba(255,255,255,.045);color:#c7c7c7;
+}
+.user-directory-tab.active{border-color:#fff;background:#fff;color:#080808}
 .section-title,.school-section-header{color:#f3f3f3}
 .section-title{padding:12px 14px;font-size:11px;font-weight:800;letter-spacing:.055em}
 .friends-section{border-top-color:var(--pl-line)}
@@ -3107,6 +3154,7 @@ body{
     }
 }
 /* Consistent user rows and compact add action */
+.all-users-list{gap:8px}
 .all-user-card,#searchResult .search-result{display:flex;align-items:center;justify-content:flex-start;gap:11px;min-width:0;padding:9px 10px;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:#141414;backdrop-filter:none;transition:border-color .18s ease,background .18s ease}
 .all-user-card:hover,#searchResult .search-result:hover{border-color:rgba(255,255,255,.28);background:#191919}
 .all-user-avatar{width:42px;height:42px;min-width:42px;border:1px solid #303030;background:#202020;color:#fff}
@@ -3130,9 +3178,25 @@ body{
     font-weight:750;
     letter-spacing:0;
 }
+
+
+/* PrivLines dark chat theme: keep chat consistent with the black main menu. */
+.chat { color:#fff !important; background:#000 !important; border-color:rgba(255,255,255,.14); }
+.chat-header { color:#fff !important; background:#050505 !important; border-bottom-color:rgba(255,255,255,.12) !important; }
+#chatPartner { color:#fff !important; }
+.chat-subtitle, .empty-chat { color:#a5a5a5 !important; }
+.chat-avatar { color:#fff !important; background:#111 !important; border-color:#333 !important; }
+.call-button, .chat-action-button { color:#fff !important; background:#111 !important; border-color:#333 !important; }
+.call-button:hover:not(:disabled), .chat-action-button:hover { color:#fff !important; background:#222 !important; border-color:#555 !important; }
+#messages { color:#fff !important; background:#000 !important; scrollbar-color:#444 transparent; }
+#messages::-webkit-scrollbar-thumb { border-color:#000 !important; background:#444 !important; }
+.message { color:#fff !important; background:#111 !important; border-color:#292929 !important; box-shadow:none !important; }
+.message.mine { color:#fff !important; background:#202020 !important; border-color:#3b3b3b !important; }
+.message-user { color:#aaa !important; }
+.message.mine .message-user { color:#ccc !important; }
+
 </style>
 
-    <link rel="stylesheet" href="/privlines-theme.css?v=20261017-mobilefix1">
 </head>
 
 <body class="edition-loading">
