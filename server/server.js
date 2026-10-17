@@ -7510,7 +7510,7 @@ io.on(
 
                     // Push auch für verbundene, aber im Hintergrund befindliche Clients.
                     void pushToUser(recipientId, mode, {
-                        kind: "call",
+                        kind: "group-call",
                         title: `Gruppenanruf von ${displayName}`,
                         body: data.video ? "Eingehender Gruppen-Videoanruf" : "Eingehender Gruppenanruf",
                         callId,
