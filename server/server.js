@@ -14,6 +14,7 @@ const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const webPush = require("./webPush");
 const fcm = require("./fcm");
+const githubProfileImages = require("./githubProfileImages");
 
 require("dotenv").config();
 
@@ -109,6 +110,29 @@ app.use(
 app.use(
     cookieParser()
 );
+
+app.get("/uploads/profiles/:filename", authenticateToken, async (req, res, next) => {
+    if (!githubProfileImages.isConfigured()) return next();
+    const filename = String(req.params.filename || "");
+    if (!/^[A-Za-z0-9._-]{1,200}$/.test(filename)) return res.sendStatus(404);
+
+    const localPath = path.join(profileUploadPath, filename);
+    if (fs.existsSync(localPath)) {
+        return res.sendFile(localPath);
+    }
+
+    try {
+        const image = await githubProfileImages.get(filename);
+        if (!image) return res.sendStatus(404);
+        res.set("Content-Type", image.contentType);
+        res.set("Cache-Control", "private, max-age=3600");
+        res.set("X-Content-Type-Options", "nosniff");
+        return res.send(image.contents);
+    } catch (error) {
+        console.error("Profilbild konnte nicht aus GitHub geladen werden:", error.message);
+        return res.status(502).send("Profilbild ist vorübergehend nicht verfügbar.");
+    }
+});
 
 app.use(
     "/uploads",
@@ -440,10 +464,12 @@ const profileStorage =
         filename:
             (req, file, cb) => {
 
-                const extension =
-                    path.extname(
-                        file.originalname
-                    ).toLowerCase();
+                const extension = ({
+                    "image/jpeg": ".jpg",
+                    "image/png": ".png",
+                    "image/gif": ".gif",
+                    "image/webp": ".webp"
+                })[file.mimetype] || path.extname(file.originalname).toLowerCase();
 
                 const filename =
                     `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${extension}`;
@@ -689,6 +715,14 @@ app.post(
                 });
             }
 
+            if (githubProfileImages.isConfigured()) {
+                await githubProfileImages.upload(
+                    req.file.filename,
+                    fs.readFileSync(req.file.path),
+                    "Store PrivLines profile image"
+                );
+            }
+
             const oldPicture =
                 users[0].profile_picture;
 
@@ -711,6 +745,17 @@ app.post(
                 )
             ) {
 
+                if (githubProfileImages.isConfigured()) {
+                    try {
+                        await githubProfileImages.remove(
+                            path.basename(oldPicture),
+                            "Remove replaced PrivLines profile image"
+                        );
+                    } catch (error) {
+                        console.warn("Altes Profilbild konnte nicht aus GitHub entfernt werden:", error.message);
+                    }
+                }
+
                 const oldFile = path.join(profileUploadPath, path.basename(oldPicture));
 
                 if (
@@ -725,6 +770,10 @@ app.post(
                         );
                     } catch (_) {}
                 }
+            }
+
+            if (githubProfileImages.isConfigured()) {
+                try { fs.unlinkSync(req.file.path); } catch (_) {}
             }
 
             const profilePayload = { userId:Number(userId), profilePicture:profilePicture };
@@ -749,6 +798,15 @@ app.post(
             });
 
         } catch (error) {
+
+            if (req.file && githubProfileImages.isConfigured()) {
+                try {
+                    await githubProfileImages.remove(
+                        req.file.filename,
+                        "Remove incomplete PrivLines profile image upload"
+                    );
+                } catch (_) {}
+            }
 
             console.error(
                 "❌ Profilbild-Fehler:",
@@ -1694,6 +1752,16 @@ app.delete("/api/account", authenticateToken, async (req,res) => {
         await conn.query(`DELETE FROM ${table} WHERE id=?`, [userId]);
         await conn.commit();
         if (oldProfilePicture && oldProfilePicture.startsWith("/uploads/profiles/")) {
+            if (githubProfileImages.isConfigured()) {
+                try {
+                    await githubProfileImages.remove(
+                        path.basename(oldProfilePicture),
+                        "Remove deleted PrivLines profile image"
+                    );
+                } catch (error) {
+                    console.warn("Profilbild des gelöschten Kontos konnte nicht aus GitHub entfernt werden:", error.message);
+                }
+            }
             const oldFile = path.join(profileUploadPath, path.basename(oldProfilePicture));
             try { if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile); } catch (_) {}
         }
