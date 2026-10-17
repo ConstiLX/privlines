@@ -954,10 +954,11 @@ app.post(
                 }
             );
             void pushToUser(receiverId, req.user.mode, {
-                    title: req.user.username || "PrivLines",
-                    body: "Du hast eine neue Nachricht in PrivLines.",
-                    url: "/chat.html"
-                });
+                kind: "message",
+                title: req.user.username || "PrivLines",
+                body: "Du hast eine neue Nachricht in PrivLines.",
+                url: "/chat.html"
+            });
 
             return res.json({
                 success:
@@ -1035,9 +1036,10 @@ app.post("/api/upload/audio", authenticateToken, uploadVoiceMessage.single("audi
             senderDisplayName: req.user.displayName || req.user.username, text: '🎙️ Sprachnachricht'
         });
         void pushToUser(receiverId, 'standard', {
-                title: req.user.displayName || req.user.username || 'PrivLines',
-                body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
-            });
+            kind: "message",
+            title: req.user.displayName || req.user.username || 'PrivLines',
+            body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
+        });
         return res.json({ success: true, blocked: false, message });
     } catch (error) {
         console.error('❌ Sprachnachricht-Upload-Fehler:', error);
@@ -5539,9 +5541,17 @@ app.post("/api/groups/:groupId/media", authenticateToken, groupMediaUpload.singl
         const message=rows[0];
         const [members]=await db.execute(`SELECT user_id AS userId FROM group_members WHERE group_id=?`,[groupId]);
 
-        for(const member of members) {
-            if(Number(member.userId)!==userId && await areUsersBlocked(userId,Number(member.userId))) continue;
-            io.to(`user-${member.userId}`).emit("groupMessage",message);
+        for (const member of members) {
+            const recipientId = Number(member.userId);
+            if (recipientId === userId) continue;
+            if (await areUsersBlocked(userId, recipientId)) continue;
+            io.to(`user-${recipientId}`).emit("groupMessage", message);
+            void pushToUser(recipientId, "standard", {
+                kind: "message",
+                title: message.displayName || message.username || "PrivLines",
+                body: "Du hast ein Medium in einer PrivLines-Gruppe erhalten.",
+                url: "/chat.html"
+            });
         }
 
         return res.json(message);
@@ -5570,7 +5580,18 @@ app.post("/api/groups/:groupId/messages", authenticateToken, async (req,res) => 
             WHERE gm.id=? LIMIT 1
         `,[result.insertId]);
         const message=rows[0]; const [members]=await db.execute(`SELECT user_id AS userId FROM group_members WHERE group_id=?`,[groupId]);
-        for(const member of members){ if(Number(member.userId)!==userId && await areUsersBlocked(userId,Number(member.userId))) continue; io.to(`user-${member.userId}`).emit("groupMessage",message); }
+        for (const member of members) {
+            const recipientId = Number(member.userId);
+            if (recipientId === userId) continue;
+            if (await areUsersBlocked(userId, recipientId)) continue;
+            io.to(`user-${recipientId}`).emit("groupMessage", message);
+            void pushToUser(recipientId, "standard", {
+                kind: "message",
+                title: message.displayName || message.username || "PrivLines",
+                body: "Du hast eine neue Gruppennachricht in PrivLines.",
+                url: "/chat.html"
+            });
+        }
         return res.json(message);
     } catch(error){ console.error("❌ Gruppennachricht Fehler:",error); return res.status(500).json({error:"Gruppennachricht konnte nicht gesendet werden."}); }
 });
@@ -6735,10 +6756,11 @@ io.on(
                         }
                     );
                     void pushToUser(receiverId, mode, {
-                            title: displayName || username || "PrivLines",
-                            body: "Du hast eine neue Nachricht in PrivLines.",
-                            url: "/chat.html"
-                        });
+                        kind: "message",
+                        title: displayName || username || "PrivLines",
+                        body: "Du hast eine neue Nachricht in PrivLines.",
+                        url: "/chat.html"
+                    });
 
                 } catch (error) {
 
@@ -7163,7 +7185,7 @@ io.on(
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
             const recipientRoom = `user-${toUserId}`;
             const recipientOnline = !!io.sockets.adapter.rooms.get(recipientRoom)?.size;
-            if (typeof data?.callId === "string" && data.callId && data.offer) {
+            if (!recipientOnline && typeof data?.callId === "string" && data.callId && data.offer) {
                 try {
                     await db.execute(`
                         INSERT INTO pending_call_offers
@@ -7182,7 +7204,11 @@ io.on(
                 video: !!data.video,
                 offer: data.offer
             });
-            await pushToUser(toUserId, mode, {
+            // Push auch senden, wenn Socket.IO noch verbunden ist: Ein Browser-Tab
+            // kann im Hintergrund sein und dort keine sichtbare Anrufanzeige zeigen.
+            // Der Service Worker unterdrückt Push-Notifications, solange PrivLines
+            // bereits sichtbar ist.
+            void pushToUser(toUserId, mode, {
                 kind: "call",
                 title: `Anruf von ${displayName}`,
                 body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
@@ -7298,16 +7324,16 @@ io.on(
                             fromUsername: displayName,
                             video: !!data.video
                         });
+                    } else {
+                        await db.execute(`
+                            INSERT INTO pending_group_call_invites
+                                (call_id, recipient_user_id, mode, group_id, caller_user_id, caller_name, video, expires_at)
+                            VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
+                            ON DUPLICATE KEY UPDATE group_id=VALUES(group_id), caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), expires_at=VALUES(expires_at)
+                        `, [callId, recipientId, mode, groupId, userId, displayName, data.video ? 1 : 0]);
                     }
 
-                    // Persist the invite even when a socket exists: mobile browsers may be suspended.
-                    await db.execute(`
-                        INSERT INTO pending_group_call_invites
-                            (call_id, recipient_user_id, mode, group_id, caller_user_id, caller_name, video, expires_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
-                        ON DUPLICATE KEY UPDATE group_id=VALUES(group_id), caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), expires_at=VALUES(expires_at)
-                    `, [callId, recipientId, mode, groupId, userId, displayName, data.video ? 1 : 0]);
-
+                    // Push auch für verbundene, aber im Hintergrund befindliche Clients.
                     void pushToUser(recipientId, mode, {
                         kind: "call",
                         title: `Gruppenanruf von ${displayName}`,
