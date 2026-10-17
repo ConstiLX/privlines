@@ -1,0 +1,22 @@
+[Unit]
+Description=PrivLines Node.js server
+After=network-online.target mariadb.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=privlines
+Group=privlines
+WorkingDirectory=/opt/privlines
+EnvironmentFile=/etc/privlines/privlines.env
+ExecStart=/usr/bin/npm start
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/privlines/uploads
+
+[Install]
+WantedBy=multi-user.target

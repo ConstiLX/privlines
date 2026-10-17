@@ -38,6 +38,11 @@ const io =
 
 const PORT =
     process.env.PORT || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
+const SESSION_DAYS = Math.min(365, Math.max(1, Number.parseInt(process.env.SESSION_DAYS || "90", 10) || 90));
+const SESSION_TTL = `${SESSION_DAYS}d`;
+const SESSION_MAX_AGE = SESSION_DAYS * 24 * 60 * 60 * 1000;
+const COOKIE_SECURE = process.env.COOKIE_SECURE === "true";
 
 
 // =====================================================
@@ -1358,7 +1363,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            "7d"
+                            SESSION_TTL
                     }
                 );
 
@@ -1373,10 +1378,10 @@ app.post(
                         "lax",
 
                     secure:
-                        false,
+                        COOKIE_SECURE,
 
                     maxAge:
-                        7 * 24 * 60 * 60 * 1000,
+                        SESSION_MAX_AGE,
 
                     path:
                         "/"
@@ -1513,7 +1518,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            "7d"
+                            SESSION_TTL
                     }
                 );
 
@@ -1528,10 +1533,10 @@ app.post(
                         "lax",
 
                     secure:
-                        false,
+                        COOKIE_SECURE,
 
                     maxAge:
-                        7 * 24 * 60 * 60 * 1000,
+                        SESSION_MAX_AGE,
 
                     path:
                         "/"
@@ -1652,7 +1657,7 @@ app.post(
                     "lax",
 
                 secure:
-                    false,
+                    COOKIE_SECURE,
 
                 path:
                     "/"
@@ -1876,7 +1881,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            "7d"
+                            SESSION_TTL
                     }
                 );
 
@@ -1891,10 +1896,10 @@ app.post(
                         "lax",
 
                     secure:
-                        false,
+                        COOKIE_SECURE,
 
                     maxAge:
-                        7 * 24 * 60 * 60 * 1000,
+                        SESSION_MAX_AGE,
 
                     path:
                         "/"
@@ -8072,6 +8077,7 @@ async function ensurePushSchema() {
 
 server.listen(
     PORT,
+    HOST,
     async () => {
 
         console.log("");

@@ -8,10 +8,10 @@ const pool = mysql.createPool({
     password: process.env.DB_PASSWORD,
     database: process.env.DB_NAME,
 
-    // SSL für MariaDB Cloud / SkySQL
-    ssl: {
-        rejectUnauthorized: false
-    },
+    // Cloud-MariaDB nutzt standardmäßig TLS. Lokal kann DB_SSL=false gesetzt werden.
+    ssl: process.env.DB_SSL === "false"
+        ? undefined
+        : { rejectUnauthorized: false },
 
     waitForConnections: true,
     connectionLimit: 10,
