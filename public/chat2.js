@@ -401,17 +401,19 @@ function renderFriends() {
 
         const element =
             document.createElement("div");
-
         element.className = "friend";
+        element.setAttribute("role", "button");
+        element.tabIndex = 0;
 
-        if (
-            currentPartner &&
-            Number(currentPartner.userId) ===
-            Number(friend.userId)
-        ) {
-
-            element.classList.add("active");
-        }
+        const isActiveFriend = Boolean(
+            currentPartner && Number(currentPartner.userId) === Number(friend.userId)
+        );
+        if (isActiveFriend) element.classList.add("active");
+        element.setAttribute("aria-pressed", String(isActiveFriend));
+        element.setAttribute(
+            "aria-label",
+            `Chat mit ${friend.displayName || friend.username || "Kontakt"} öffnen`
+        );
 
         const avatar =
             document.createElement("div");
@@ -458,7 +460,7 @@ function renderFriends() {
         if (unread > 0) {
 
             const badge =
-                document.createElement("div");
+                document.createElement("span");
 
             badge.className = "unread-badge";
 
@@ -476,10 +478,12 @@ function renderFriends() {
          * WICHTIG:
          * openChat() ist jetzt tatsächlich definiert.
          */
-        element.addEventListener(
-            "click",
-            () => openChat(friend)
-        );
+        element.addEventListener("click", () => openChat(friend));
+        element.addEventListener("keydown", event => {
+            if (event.key !== "Enter" && event.key !== " ") return;
+            event.preventDefault();
+            openChat(friend);
+        });
 
         friendsList.appendChild(
             element
