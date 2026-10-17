@@ -2376,6 +2376,7 @@ async function requestNotificationPermission() {
 }
 
 async function registerBackgroundPush() {
+    if (window.PrivLinesNative) return;
     if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
     try {
         if (Notification.permission !== "granted") return;
@@ -2416,7 +2417,22 @@ async function registerBackgroundPush() {
     }
 }
 
+window.privLinesRegisterAndroidPushToken = async function (token) {
+    if (!window.PrivLinesNative || typeof token !== "string" || !token.trim()) return;
+    try {
+        await fetch("/api/push/android/subscribe", {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ token: token.trim() })
+        });
+    } catch (error) {
+        console.warn("Android-Push konnte nicht registriert werden:", error);
+    }
+};
+
 function requestPushPermissionFromUserGesture() {
+    if (window.PrivLinesNative) return;
     if (!("Notification" in window)) return;
 
     // Wenn die Berechtigung schon erteilt wurde, das Push-Abo trotzdem

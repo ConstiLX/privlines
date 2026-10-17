@@ -13,6 +13,7 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const webPush = require("./webPush");
+const fcm = require("./fcm");
 
 require("dotenv").config();
 
@@ -257,7 +258,44 @@ app.delete("/api/push/subscribe", authenticateToken, async (req, res) => {
     }
 });
 
+app.post("/api/push/android/subscribe", authenticateToken, async (req, res) => {
+    try {
+        const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+        if (!token || token.length > 4096 || /\s/.test(token)) {
+            return res.status(400).json({ error: "Ungültiges Android-Push-Token." });
+        }
+        await db.execute(`
+            INSERT INTO android_push_tokens (token_hash, token, user_id, mode)
+            VALUES (?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE token=VALUES(token), user_id=VALUES(user_id), mode=VALUES(mode), updated_at=CURRENT_TIMESTAMP
+        `, [crypto.createHash("sha256").update(token).digest("hex"), token, Number(req.user.userId), req.user.mode === "school" ? "school" : "standard"]);
+        return res.json({ success: true });
+    } catch (error) {
+        console.error("Android-Push-Token konnte nicht gespeichert werden:", error.message);
+        return res.status(500).json({ error: "Android-Push-Token konnte nicht gespeichert werden." });
+    }
+});
+
+app.delete("/api/push/android/subscribe", authenticateToken, async (req, res) => {
+    try {
+        const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
+        if (!token || token.length > 4096) return res.status(400).json({ error: "Ungültiges Android-Push-Token." });
+        await db.execute("DELETE FROM android_push_tokens WHERE token_hash=? AND user_id=? AND mode=?", [
+            crypto.createHash("sha256").update(token).digest("hex"),
+            Number(req.user.userId),
+            req.user.mode === "school" ? "school" : "standard"
+        ]);
+        return res.json({ success: true });
+    } catch (error) {
+        console.error("Android-Push-Token konnte nicht entfernt werden:", error.message);
+        return res.status(500).json({ error: "Android-Push-Token konnte nicht entfernt werden." });
+    }
+});
+
 async function pushToUser(userId, mode, payload) {
+    if (payload?.kind !== "call" && payload?.kind !== "call-ended") {
+        void pushAndroidToUser(userId, mode, payload);
+    }
     if (!webPush.getKeys()) return;
     try {
         const [subscriptions] = await db.execute(
@@ -278,6 +316,31 @@ async function pushToUser(userId, mode, payload) {
         }));
     } catch (error) {
         console.warn("Push-Abonnements konnten nicht geladen werden:", error.message);
+    }
+}
+
+async function pushAndroidToUser(userId, mode, payload) {
+    if (!fcm.getServiceAccount()) return;
+    try {
+        const [tokens] = await db.execute(
+            "SELECT token_hash AS tokenHash, token FROM android_push_tokens WHERE user_id=? AND mode=?",
+            [Number(userId), mode === "school" ? "school" : "standard"]
+        );
+        await Promise.all(tokens.map(async ({ token, tokenHash }) => {
+            try {
+                const result = await fcm.sendAndroidPush(token, payload);
+                const tokenIsInvalid = result.result?.error?.details?.some(detail => detail.errorCode === "UNREGISTERED");
+                if (tokenIsInvalid) {
+                    await db.execute("DELETE FROM android_push_tokens WHERE token_hash=?", [tokenHash]);
+                } else if (!result.ok) {
+                    console.warn(`Android-Push fehlgeschlagen (HTTP ${result.status || "unbekannt"}).`);
+                }
+            } catch (error) {
+                console.warn("Android-Push konnte nicht gesendet werden:", error.message);
+            }
+        }));
+    } catch (error) {
+        console.warn("Android-Push-Tokens konnten nicht geladen werden:", error.message);
     }
 }
 
@@ -7210,23 +7273,24 @@ io.on(
         // =================================================
         socket.on("call:offer", async data => {
             const toUserId = Number(data?.toUserId);
-            if (!Number.isInteger(toUserId) || toUserId <= 0) return;
-            const recipientRoom = `user-${toUserId}`;
-            const recipientOnline = !!io.sockets.adapter.rooms.get(recipientRoom)?.size;
-            if (!recipientOnline && typeof data?.callId === "string" && data.callId && data.offer) {
-                try {
-                    await db.execute(`
-                        INSERT INTO pending_call_offers
-                            (call_id, recipient_user_id, mode, caller_user_id, caller_name, video, offer, expires_at)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
-                        ON DUPLICATE KEY UPDATE caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), offer=VALUES(offer), expires_at=VALUES(expires_at)
-                    `, [String(data.callId).slice(0, 128), toUserId, mode, userId, displayName, data.video ? 1 : 0, JSON.stringify(data.offer)]);
-                } catch (error) {
-                    console.warn("Anrufangebot konnte nicht zwischengespeichert werden:", error.message);
-                }
+            const callId = typeof data?.callId === "string" ? data.callId.slice(0, 128) : "";
+            if (!Number.isInteger(toUserId) || toUserId <= 0 || !callId || !data?.offer) return;
+            try {
+                // Immer erst dauerhaft ablegen. Eine offene Socket-Verbindung sagt
+                // nicht zuverlässig aus, ob die App im Hintergrund reagieren kann.
+                await db.execute(`
+                    INSERT INTO pending_call_offers
+                        (call_id, recipient_user_id, mode, caller_user_id, caller_name, video, offer, expires_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
+                    ON DUPLICATE KEY UPDATE caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), offer=VALUES(offer), created_at=CURRENT_TIMESTAMP, expires_at=VALUES(expires_at)
+                `, [callId, toUserId, mode, userId, displayName, data.video ? 1 : 0, JSON.stringify(data.offer)]);
+            } catch (error) {
+                console.warn("Anrufangebot konnte nicht zwischengespeichert werden:", error.message);
+                socket.emit("call:error", { callId, error: "Anruf konnte nicht zugestellt werden. Bitte erneut versuchen." });
+                return;
             }
             io.to(`user-${toUserId}`).emit("call:incoming", {
-                callId: data.callId,
+                callId,
                 fromUserId: userId,
                 fromUsername: displayName,
                 video: !!data.video,
@@ -7234,13 +7298,18 @@ io.on(
             });
             // Push auch bei verbundenen Clients senden. Der Service Worker zeigt
             // den Systemhinweis auch bei gesperrtem Bildschirm an.
-            void pushToUser(toUserId, mode, {
+            const pushPayload = {
                 kind: "call",
                 title: `Anruf von ${displayName}`,
                 body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
-                callId: String(data.callId || ""),
+                callId,
+                callerUserId: String(userId),
+                callerName: displayName,
+                video: data.video ? "true" : "false",
                 url: "/chat.html"
-            });
+            };
+            void pushToUser(toUserId, mode, pushPayload);
+            void pushAndroidToUser(toUserId, mode, pushPayload);
         });
 
         socket.on("call:fetch-pending", async () => {
@@ -7252,7 +7321,6 @@ io.on(
                     WHERE recipient_user_id=? AND mode=? AND expires_at > NOW()
                     ORDER BY created_at ASC
                 `, [userId, mode]);
-                await db.execute("DELETE FROM pending_call_offers WHERE recipient_user_id=? AND mode=?", [userId, mode]);
                 for (const call of pendingCalls) {
                     socket.emit("call:incoming", {
                         ...call,
@@ -7280,6 +7348,9 @@ io.on(
         socket.on("call:answer", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
+            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
+                .catch(error => console.warn("Angenommener Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
+            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:answer", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7300,6 +7371,9 @@ io.on(
         socket.on("call:reject", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
+            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
+                .catch(error => console.warn("Abgelehnter Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
+            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7310,6 +7384,9 @@ io.on(
         socket.on("call:busy", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
+            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
+                .catch(error => console.warn("Besetzt-Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
+            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7320,10 +7397,14 @@ io.on(
         socket.on("call:end", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
+            const callId = String(data?.callId || "").slice(0, 128);
+            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [callId, toUserId, mode])
+                .catch(error => console.warn("Beendeter Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
             io.to(`user-${toUserId}`).emit("call:ended", {
-                callId: data.callId,
+                callId,
                 fromUserId: userId
             });
+            void pushAndroidToUser(toUserId, mode, { kind: "call-ended", callId });
         });
 
         socket.on("groupCall:invite", async data => {
@@ -8035,6 +8116,17 @@ async function ensurePushSchema() {
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             UNIQUE KEY push_endpoint_unique (endpoint_hash),
             KEY push_user_lookup (user_id, mode)
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+    `);
+    await db.execute(`
+        CREATE TABLE IF NOT EXISTS android_push_tokens (
+            token_hash CHAR(64) NOT NULL PRIMARY KEY,
+            token TEXT NOT NULL,
+            user_id BIGINT NOT NULL,
+            mode VARCHAR(20) NOT NULL DEFAULT 'standard',
+            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            KEY android_push_user_lookup (user_id, mode)
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.execute(`

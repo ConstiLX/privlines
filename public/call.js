@@ -17,6 +17,11 @@
     let currentCall = null;
     let pendingOffer = null;
     let pendingIceCandidates = [];
+    const nativeCallParams = new URLSearchParams(window.location.search);
+    let nativeCallAction = {
+        callId: nativeCallParams.get("nativeCallId"),
+        action: nativeCallParams.get("nativeCallAction")
+    };
 
     let isMuted = false;
     let cameraEnabled = false;
@@ -946,6 +951,13 @@
 
             if (currentCall) {
 
+                if (currentCall.callId === data.callId) {
+                    window.PrivLinesNative?.clearIncomingCall?.(data.callId);
+                    return;
+                }
+
+                window.PrivLinesNative?.clearIncomingCall?.(data.callId);
+
                 socket.emit(
                     "call:reject",
                     {
@@ -1044,6 +1056,25 @@
             }
 
             showOverlay();
+            window.PrivLinesNative?.clearIncomingCall?.(data.callId);
+
+            const pendingNativeAction = window.__privLinesNativeCallAction || nativeCallAction;
+            if (pendingNativeAction.callId === data.callId && pendingNativeAction.action) {
+                const action = pendingNativeAction.action;
+                nativeCallAction = { callId: null, action: null };
+                window.__privLinesNativeCallAction = null;
+                window.PrivLinesNative?.clearIncomingCall?.(data.callId);
+                if (action === "answer") {
+                    void acceptCall();
+                } else if (action === "reject") {
+                    socket.emit("call:reject", {
+                        callId: data.callId,
+                        toUserId: data.fromUserId,
+                        reason: "rejected"
+                    });
+                    finishCall(false);
+                }
+            }
         }
     );
 
