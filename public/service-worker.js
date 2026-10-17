@@ -1,3 +1,12 @@
+/* Activate the notification behavior change without requiring all tabs to close. */
+self.addEventListener("install", event => {
+    event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener("activate", event => {
+    event.waitUntil(self.clients.claim());
+});
+
 /* PrivLines Push-Benachrichtigungen im Hintergrund */
 self.addEventListener("push", event => {
     event.waitUntil((async () => {
@@ -8,8 +17,20 @@ self.addEventListener("push", event => {
             console.warn("PrivLines: Push-Payload ist kein gültiges JSON.", error);
         }
 
-        // Systembenachrichtigungen immer anzeigen. Ein sichtbarer Tab bedeutet
-        // nicht, dass die Person den Bildschirm gerade sieht (z. B. Sperrbildschirm).
+        // Im Vordergrund übernimmt die geöffnete Seite selbst die Meldung.
+        // Im Hintergrund bzw. bei gesperrtem Bildschirm bleibt der System-Push aktiv.
+        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const appIsFocused = clients.some(client => {
+            try {
+                return new URL(client.url).origin === self.location.origin
+                    && client.visibilityState === "visible"
+                    && client.focused === true;
+            } catch (_) {
+                return false;
+            }
+        });
+        if (appIsFocused) return;
+
         const isCall = data.kind === "call";
         const isGroupCall = data.kind === "group-call";
         const call = isCall || isGroupCall;

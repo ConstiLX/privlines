@@ -6498,6 +6498,30 @@ io.on(
         sendPendingFriendRequests(socket);
 
         // =================================================
+        // PRIVATEN CHAT RAUM SICHER BEITRETEN
+        // =================================================
+
+        socket.on("joinChat", async chatId => {
+            const numericChatId = Number(chatId);
+            if (!Number.isInteger(numericChatId) || numericChatId <= 0) return;
+            try {
+                const [rows] = await db.execute(`
+                    SELECT id FROM chats
+                    WHERE id = ? AND mode = ? AND (user1_id = ? OR user2_id = ?)
+                    LIMIT 1
+                `, [numericChatId, mode, userId, userId]);
+                if (!rows.length) {
+                    socket.emit("chatError", { error: "Kein Zugriff auf diesen Chat." });
+                    return;
+                }
+                socket.join(`chat-${numericChatId}`);
+            } catch (error) {
+                console.error("Chat-Raum konnte nicht betreten werden:", error);
+                socket.emit("chatError", { error: "Chat-Verbindung konnte nicht hergestellt werden." });
+            }
+        });
+
+        // =================================================
         // CHAT VERLASSEN
         // =================================================
 

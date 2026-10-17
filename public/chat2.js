@@ -151,6 +151,8 @@ const blockButton =
 let currentUser = null;
 let currentChatId = null;
 let currentPartner = null;
+let chatOpenRequestId = 0;
+let chatIsOpening = false;
 
 window.currentPartner = null;
 
@@ -503,6 +505,9 @@ async function openChat(friend) {
         return;
     }
 
+    const openRequestId = ++chatOpenRequestId;
+    chatIsOpening = true;
+
     /*
      * Alten Chat verlassen
      */
@@ -598,210 +603,24 @@ async function openChat(friend) {
 
     try {
 
-        /*
-         * --------------------------------------------------
-         * CHATS LADEN
-         * --------------------------------------------------
-         */
+        // Der Server prüft die Freundschaft und liefert die kanonische Chat-ID.
+        // Eine lokale Suche über eine eventuell veraltete Chatliste kann falsche IDs zuordnen.
+        const response = await fetch("/api/chats", {
+            method: "POST",
+            credentials: "include",
+            cache: "no-store",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ userId: Number(friend.userId) })
+        });
+        const chatData = await readJsonResponse(response);
+        if (openRequestId !== chatOpenRequestId) return;
+        if (!response.ok) throw new Error(chatData.error || "Chat konnte nicht geöffnet werden.");
 
-        const response =
-            await fetch(
-                "/api/chats",
-                {
-                    credentials: "include",
-                    cache: "no-store"
-                }
-            );
-
-        const chats =
-            await readJsonResponse(response);
-
-        if (!response.ok) {
-
-            throw new Error(
-                chats.error ||
-                "Chats konnten nicht geladen werden."
-            );
+        const resolvedChatId = Number(chatData.chatId ?? chatData.id ?? chatData.chat_id);
+        if (!Number.isInteger(resolvedChatId) || resolvedChatId <= 0) {
+            throw new Error("Der Server hat keine gültige Chat-ID geliefert.");
         }
-
-        const chatList =
-            Array.isArray(chats)
-                ? chats
-                : Array.isArray(chats.chats)
-                    ? chats.chats
-                    : [];
-
-        /*
-         * --------------------------------------------------
-         * EXISTIERENDEN CHAT SUCHEN
-         *
-         * Unterstützt mehrere mögliche Feldnamen,
-         * damit die Funktion nicht unnötig von der
-         * genauen Server-Antwort abhängig ist.
-         * --------------------------------------------------
-         */
-
-        const friendId =
-            Number(friend.userId);
-
-        let existingChat = null;
-
-        for (const chatItem of chatList) {
-
-            if (!chatItem) {
-                continue;
-            }
-
-            const possibleIds = [
-
-                chatItem.userId,
-                chatItem.partnerId,
-                chatItem.otherUserId,
-                chatItem.friendId,
-                chatItem.user_id,
-                chatItem.partner_id,
-                chatItem.other_user_id,
-                chatItem.friend_id,
-                chatItem.receiver_id,
-                chatItem.sender_id
-
-            ];
-
-            const found =
-                possibleIds.some(
-                    id =>
-                        id != null &&
-                        Number(id) === friendId
-                );
-
-            if (found) {
-
-                existingChat =
-                    chatItem;
-
-                break;
-            }
-        }
-
-        /*
-         * --------------------------------------------------
-         * CHAT-ID AUS BESTEHENDEM CHAT
-         * --------------------------------------------------
-         */
-
-        if (existingChat) {
-
-            const possibleChatIds = [
-
-                existingChat.id,
-                existingChat.chatId,
-                existingChat.chat_id
-
-            ];
-
-            for (
-                const possibleId
-                of possibleChatIds
-            ) {
-
-                if (
-                    possibleId != null &&
-                    Number(possibleId) > 0
-                ) {
-
-                    currentChatId =
-                        Number(possibleId);
-
-                    break;
-                }
-            }
-        }
-
-        /*
-         * --------------------------------------------------
-         * FALLS NOCH KEIN CHAT EXISTIERT:
-         * CHAT ERSTELLEN
-         * --------------------------------------------------
-         */
-
-        if (!currentChatId) {
-
-            const createResponse =
-                await fetch(
-                    "/api/chats",
-                    {
-                        method: "POST",
-                        credentials: "include",
-                        headers: {
-                            "Content-Type":
-                                "application/json"
-                        },
-                        body: JSON.stringify({
-                            userId: friendId
-                        })
-                    }
-                );
-
-            const createdChat =
-                await readJsonResponse(
-                    createResponse
-                );
-
-            if (!createResponse.ok) {
-
-                throw new Error(
-                    createdChat.error ||
-                    "Chat konnte nicht erstellt werden."
-                );
-            }
-
-            const possibleChatIds = [
-
-                createdChat.id,
-                createdChat.chatId,
-                createdChat.chat_id
-
-            ];
-
-            for (
-                const possibleId
-                of possibleChatIds
-            ) {
-
-                if (
-                    possibleId != null &&
-                    Number(possibleId) > 0
-                ) {
-
-                    currentChatId =
-                        Number(possibleId);
-
-                    break;
-                }
-            }
-        }
-
-        /*
-         * --------------------------------------------------
-         * GÜLTIGE CHAT-ID PRÜFEN
-         * --------------------------------------------------
-         */
-
-        if (!currentChatId) {
-
-            console.error(
-                "Keine Chat-ID erhalten. Serverantwort:",
-                {
-                    chats: chatList,
-                    existingChat,
-                    friend,
-                }
-            );
-
-            throw new Error(
-                "Keine gültige Chat-ID erhalten."
-            );
-        }
+        currentChatId = resolvedChatId;
 
         /*
          * --------------------------------------------------
@@ -820,9 +639,9 @@ async function openChat(friend) {
          * --------------------------------------------------
          */
 
-        await loadMessages(
-            currentChatId
-        );
+        const messagesLoaded = await loadMessages(currentChatId);
+        if (openRequestId !== chatOpenRequestId) return;
+        if (!messagesLoaded) throw new Error("Nachrichten konnten nicht geladen werden.");
 
         /* Live-Update für genau diesen Chat starten. */
         startChatLiveUpdates();
@@ -834,6 +653,7 @@ async function openChat(friend) {
          */
 
         await loadBlockStatus();
+        if (openRequestId !== chatOpenRequestId) return;
 
         /*
          * --------------------------------------------------
@@ -856,6 +676,7 @@ async function openChat(friend) {
         if (voiceButton) {
             voiceButton.disabled = false;
         }
+        chatIsOpening = false;
 
         /*
          * --------------------------------------------------
@@ -897,6 +718,8 @@ async function openChat(friend) {
 
     } catch (error) {
 
+        if (openRequestId !== chatOpenRequestId) return;
+        chatIsOpening = false;
         console.error(
             "❌ Chat konnte nicht geöffnet werden:",
             error
@@ -904,6 +727,14 @@ async function openChat(friend) {
 
         stopChatLiveUpdates();
         currentChatId = null;
+        currentPartner = null;
+        window.currentPartner = null;
+        if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
+        setAvatarImage(chatAvatar, null, "?");
+        sidebar?.classList.remove("mobile-hidden");
+        chat?.classList.remove("mobile-visible");
+        document.body.classList.remove("mobile-chat-open");
+        renderFriends();
 
         if (messages) {
 
@@ -1643,7 +1474,7 @@ async function loadMessages(
 ) {
 
     if (!messages) {
-        return;
+        return false;
     }
 
     try {
@@ -1671,6 +1502,7 @@ async function loadMessages(
 
         const oldMessages =
             await readJsonResponse(response);
+        if (Number(currentChatId) !== Number(chatId)) return false;
 
         const messageList =
             Array.isArray(oldMessages)
@@ -1694,7 +1526,7 @@ async function loadMessages(
                 </div>
             `;
 
-            return;
+            return true;
         }
 
         messageList.forEach(
@@ -1732,6 +1564,7 @@ async function loadMessages(
 
         messages.scrollTop =
             messages.scrollHeight;
+        return true;
 
     } catch (error) {
 
@@ -1745,11 +1578,8 @@ async function loadMessages(
             </div>
         `;
 
-        showNotification(
-            "Nachrichten",
-            error.message ||
-            "Nachrichten konnten nicht geladen werden."
-        );
+        console.warn("Nachrichten konnten nicht geladen werden:", error.message || error);
+        return false;
     }
 }
 
@@ -1834,6 +1664,7 @@ async function refreshCurrentChatEverySecond() {
 
     if (
         chatLiveUpdateBusy ||
+        socket.connected ||
         !currentChatId ||
         !currentUser ||
         !messages
@@ -1897,20 +1728,16 @@ function startChatLiveUpdates() {
 
     if (chatLiveUpdateTimer) {
         clearInterval(chatLiveUpdateTimer);
+        chatLiveUpdateTimer = null;
     }
 
-    /* Sofort einmal prüfen und danach jede Sekunde. */
+    // Bei aktiver Socket-Verbindung werden Nachrichten direkt zugestellt.
+    // Das Polling bleibt nur als sparsamer Fallback bei Verbindungsabbruch.
+    if (!currentChatId || socket.connected) return;
+
     refreshCurrentChatEverySecond();
-
-    chatLiveUpdateTimer =
-        setInterval(
-            refreshCurrentChatEverySecond,
-            1000
-        );
-
-    console.log(
-        "🔄 Privater Chat-Live-Update gestartet."
-    );
+    chatLiveUpdateTimer = setInterval(refreshCurrentChatEverySecond, 5000);
+    console.log("🔄 Chat-Fallback aktiv (Socket getrennt).");
 }
 
 function stopChatLiveUpdates() {
@@ -1920,7 +1747,7 @@ function stopChatLiveUpdates() {
         chatLiveUpdateTimer = null;
     }
 
-    chatLiveUpdateBusy = false;
+    // Laufende Requests behalten den Busy-Lock bis zum finally-Block.
     chatLiveUpdateSignature = "";
 }
 
@@ -2549,7 +2376,7 @@ async function registerBackgroundPush() {
     try {
         if (Notification.permission !== "granted") return;
 
-        const registration = await navigator.serviceWorker.register("/service-worker.js");
+        const registration = await navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" });
         const keyResponse = await fetch("/api/push/public-key", { credentials: "include", cache: "no-store" });
         if (!keyResponse.ok) {
             console.warn(`Push-Schlüssel konnten nicht geladen werden (HTTP ${keyResponse.status}).`);
@@ -2617,15 +2444,15 @@ socket.on(
     "newMessageNotification",
     data => {
 
-        if (
-            Number(data.chatId) ===
-            Number(currentChatId)
-        ) {
-            return;
-        }
+        if (!data || !Number.isFinite(Number(data.chatId))) return;
+        const viewingSelectedChat = window.innerWidth > 650
+            || chat?.classList.contains("mobile-visible");
+        if (viewingSelectedChat && Number(data.chatId) === Number(currentChatId)) return;
 
-        const senderId =
-            Number(data.senderId);
+        const senderId = Number(data.senderId);
+        if (currentUser && senderId === Number(currentUser.userId)) return;
+        if (document.visibilityState === "visible" && document.hasFocus()
+            && currentPartner && senderId === Number(currentPartner.userId)) return;
 
         unreadMessages[senderId] =
             (unreadMessages[senderId] || 0) + 1;
@@ -2688,6 +2515,11 @@ socket.on(
             socket.id
         );
 
+        if (currentChatId) {
+            socket.emit("joinChat", Number(currentChatId));
+            stopChatLiveUpdates();
+        }
+
         if (status) {
 
             status.textContent =
@@ -2703,6 +2535,8 @@ socket.on(
 socket.on(
     "disconnect",
     () => {
+
+        if (currentChatId) startChatLiveUpdates();
 
         if (status) {
 
@@ -4779,6 +4613,24 @@ mobileBackButton?.addEventListener(
 
         event.preventDefault();
 
+        // Back cancelt einen Chat, dessen Serverantwort noch aussteht.
+        if (chatIsOpening) {
+            chatOpenRequestId += 1;
+            chatIsOpening = false;
+            if (currentChatId) socket.emit("leaveChat", Number(currentChatId));
+            stopChatLiveUpdates();
+            currentChatId = null;
+            currentPartner = null;
+            window.currentPartner = null;
+            if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
+            setAvatarImage(chatAvatar, null, "?");
+            if (messages) messages.innerHTML = '<div class="empty-chat">Wähle einen Freund aus, um zu chatten.</div>';
+            if (messageInput) messageInput.disabled = true;
+            if (sendButton) sendButton.disabled = true;
+            if (photoButton) photoButton.disabled = true;
+            if (voiceButton) voiceButton.disabled = true;
+            renderFriends();
+        }
 
         chat?.classList.remove(
             "mobile-visible"
