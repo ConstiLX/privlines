@@ -5375,6 +5375,15 @@ window.addEventListener("pageshow", () => {
 
 async function start() {
 
+    // Nach Reloads oder zurückgekehrten PWA-Tabs darf kein veralteter
+    // mobiler Chat-Screen die Kontaktliste verdecken.
+    if (window.innerWidth <= 650 && !currentPartner) {
+        sidebar?.classList.remove("mobile-hidden");
+        chat?.classList.remove("mobile-visible");
+        document.body.classList.remove("mobile-chat-open");
+    }
+    notification?.classList.remove("show");
+
     const loggedIn =
         await loadCurrentUser();
 

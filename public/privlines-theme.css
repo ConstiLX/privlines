@@ -168,7 +168,8 @@ body:has(.container) .logo { background: linear-gradient(135deg,#fff,#777) !impo
 #searchResult .search-loading::before { width: 14px; height: 14px; border: 2px solid #555; border-top-color: #fff; border-radius: 50%; content: ""; animation: pl-spin .75s linear infinite; }
 .friend { animation: pl-fade-up .28s ease both; }
 .feature-menu.open { animation: pl-menu-in .18s ease both; transform-origin: top right; }
-.notification { animation: pl-notice-in .28s cubic-bezier(.2,.8,.2,1) both; }
+.notification:not(.show) { animation: none; }
+.notification.show { animation: pl-notice-in .28s cubic-bezier(.2,.8,.2,1) both; }
 .group-modal-card,.school-modal-card,.school-codes-card { animation: pl-menu-in .22s cubic-bezier(.2,.8,.2,1) both; }
 @keyframes pl-spin { to { transform: rotate(360deg); } }
 @keyframes pl-result-in { from { opacity: 0; transform: translateY(10px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -255,5 +256,11 @@ body:has(.container) .logo { background: linear-gradient(135deg,#fff,#777) !impo
     .mobile-back-button { flex: 0 0 auto; width: auto; min-width: 0; padding: 0 9px; display: inline-flex; align-items: center; gap: 4px; font-size: 12px; }
 }
 @media (max-width: 380px) {
-    .mobile-back-label { display: none; }
+    .mobile-back-button { width: auto; min-width: 66px; padding: 0 7px; display: inline-flex; align-items: center; justify-content: center; gap: 3px; font-size: 11px; }
+    .mobile-back-label { display: inline; }
+    .chat-header { min-width: 0; }
+    .chat-user { min-width: 0; flex: 1 1 auto; }
+    .chat-user > :not(.mobile-back-button):not(.chat-avatar):not(#chatPartner) { min-width: 0; }
+    #chatPartner { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .call-button,.chat-action-button { width: 32px; min-width: 32px; height: 34px; }
 }
