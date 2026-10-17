@@ -45,12 +45,6 @@ const searchButton =
 const searchResult =
     document.getElementById("searchResult");
 
-const searchTabButton =
-    document.getElementById("searchTabButton");
-
-const allUsersTabButton =
-    document.getElementById("allUsersTabButton");
-
 const requestsList =
     document.getElementById("requestsList");
 
@@ -1355,155 +1349,24 @@ function setFriendSearchButton(button, status, userId, requestId = null) {
 }
 
 
-function setUserDirectoryTab(tab) {
-    const allUsers = tab === "all";
-    searchTabButton?.classList.toggle("active", !allUsers);
-    allUsersTabButton?.classList.toggle("active", allUsers);
-    searchTabButton?.setAttribute("aria-selected", String(!allUsers));
-    allUsersTabButton?.setAttribute("aria-selected", String(allUsers));
-
-    if (allUsers) {
-        if (usernameInput) usernameInput.value = "";
-        loadAllUsers();
-    } else if (searchResult) {
-        searchResult.innerHTML = "";
-        usernameInput?.focus();
-    }
-}
-
-function getUserDirectoryEndpoint() {
-    return currentUser?.mode === "school"
-        ? "/api/school-users"
-        : "/api/users";
-}
-
-function createAllUserCard(user) {
-    const card = document.createElement("div");
-    card.className = "all-user-card";
-
-    const avatar = document.createElement("div");
-    avatar.className = "all-user-avatar";
-    const displayName = user.displayName || user.username || "?";
-
-    if (user.profilePicture) {
-        const img = document.createElement("img");
-        img.src = user.profilePicture;
-        img.alt = "";
-        img.loading = "lazy";
-        avatar.appendChild(img);
-    } else {
-        avatar.textContent = displayName.charAt(0).toUpperCase();
-    }
-
-    const info = document.createElement("div");
-    info.className = "all-user-info";
-
-    const name = document.createElement("div");
-    name.className = "all-user-name";
-    name.textContent = displayName;
-
-    const username = document.createElement("div");
-    username.className = "all-user-username";
-    username.textContent = user.username ? `@${user.username}` : "";
-
-    info.append(name, username);
-
-    const action = document.createElement("div");
-    action.className = "all-user-action";
-
-    const button = document.createElement("button");
-    button.type = "button";
-    button.textContent = "…";
-    button.title = "Freundschaftsstatus wird geladen";
-    button.setAttribute("aria-label", button.title);
-    button.disabled = true;
-
-    action.appendChild(button);
-    card.append(avatar, info, action);
-
-    const userId = user.userId ?? user.id;
-    if (userId) {
-        getFriendshipStatus(userId)
-            .then(friendship => {
-                setFriendSearchButton(
-                    button,
-                    friendship.status,
-                    userId,
-                    friendship.requestId
-                );
-            })
-            .catch(error => {
-                console.error("Freundschaftsstatus-Fehler:", error);
-                button.disabled = true;
-                button.textContent = "Nicht verfügbar";
-            });
-    }
-
-    return card;
-}
-
-async function loadAllUsers() {
-    if (!searchResult) return;
-
-    searchResult.innerHTML = `
-        <div class="all-users-loading">👥 Nutzer werden geladen …</div>
-    `;
-
-    try {
-        const response = await fetch(getUserDirectoryEndpoint(), {
-            credentials: "include",
-            cache: "no-store"
-        });
-        const data = await readJsonResponse(response);
-
-        if (!response.ok) {
-            searchResult.innerHTML = `
-                <div class="search-error">
-                    ${escapeHtml(data.error || "Nutzer konnten nicht geladen werden.")}
-                </div>
-            `;
-            return;
-        }
-
-        const users = Array.isArray(data.users) ? data.users : [];
-
-        if (users.length === 0) {
-            searchResult.innerHTML = `
-                <div class="all-users-empty">Keine Nutzer in deiner Altersgruppe gefunden.</div>
-            `;
-            return;
-        }
-
-        const list = document.createElement("div");
-        list.className = "all-users-list";
-        users.forEach(user => list.appendChild(createAllUserCard(user)));
-
-        searchResult.replaceChildren(list);
-    } catch (error) {
-        console.error("Alle-Nutzer-Ladefehler:", error);
-        searchResult.innerHTML = `
-            <div class="search-error">
-                ${escapeHtml(error.message || "Nutzer konnten nicht geladen werden.")}
-            </div>
-        `;
-    }
-}
-
+let userSearchRequestId = 0;
 
 async function searchUser() {
 
     if (!usernameInput || !searchResult) return;
 
     const username = usernameInput.value.trim();
+    const requestId = ++userSearchRequestId;
+    if (searchButton) searchButton.disabled = true;
 
     if (!username) {
-        searchResult.innerHTML = `
-            <div class="search-error">
-                Bitte einen Benutzernamen eingeben.
-            </div>
-        `;
+        searchButton && (searchButton.disabled = false);
+        searchResult.innerHTML = `<div class="search-error" role="status">Bitte einen Benutzernamen eingeben.</div>`;
+        usernameInput.focus();
         return;
     }
+
+    searchResult.innerHTML = `<div class="search-loading" role="status">Suche läuft …</div>`;
 
     try {
         const isSchoolMode = currentUser && currentUser.mode === "school";
@@ -1523,6 +1386,7 @@ async function searchUser() {
         });
 
         const data = await readJsonResponse(response);
+        if (requestId !== userSearchRequestId) return;
 
         if (!response.ok) {
             searchResult.innerHTML = `
@@ -1604,6 +1468,7 @@ async function searchUser() {
         );
 
     } catch (error) {
+        if (requestId !== userSearchRequestId) return;
         console.error("Benutzersuche-Fehler:", error);
         searchResult.innerHTML = `
             <div class="search-error">
@@ -1614,6 +1479,8 @@ async function searchUser() {
             "Suche",
             error.message || "Bei der Benutzersuche ist ein Fehler aufgetreten."
         );
+    } finally {
+        if (requestId === userSearchRequestId && searchButton) searchButton.disabled = false;
     }
 }
 
@@ -5546,22 +5413,11 @@ deleteAccountButton?.addEventListener("click", deleteAccount);
 searchButton?.addEventListener(
     "click",
     () => {
-        setUserDirectoryTab("search");
         searchUser();
     }
 );
 
 
-searchTabButton?.addEventListener(
-    "click",
-    () => setUserDirectoryTab("search")
-);
-
-
-allUsersTabButton?.addEventListener(
-    "click",
-    () => setUserDirectoryTab("all")
-);
 
 
 usernameInput?.addEventListener(
@@ -5573,8 +5429,6 @@ usernameInput?.addEventListener(
         ) {
 
             event.preventDefault();
-
-            setUserDirectoryTab("search");
             searchUser();
         }
     }

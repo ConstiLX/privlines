@@ -267,40 +267,7 @@ button:disabled{
     margin-top:8px;
 }
 
-.user-directory-tabs{
-    display:flex;
-    gap:8px;
-    margin-top:10px;
-}
 
-.user-directory-tab{
-    flex:1;
-    border:1px solid rgba(255,255,255,.12);
-    border-radius:12px;
-    padding:9px 12px;
-    background:rgba(255,255,255,.05);
-    color:rgba(255,255,255,.72);
-    font-weight:800;
-    cursor:pointer;
-    transition:.18s ease;
-}
-
-.user-directory-tab:hover{
-    background:rgba(255,255,255,.09);
-    color:#fff;
-}
-
-.user-directory-tab.active{
-    background:rgba(125,249,255,.14);
-    border-color:rgba(125,249,255,.42);
-    color:#7df9ff;
-}
-
-.all-users-list{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-}
 
 .all-user-card{
     display:flex;
@@ -353,14 +320,6 @@ button:disabled{
 
 .all-user-action{
     flex-shrink:0;
-}
-
-.all-users-loading,
-.all-users-empty{
-    padding:14px;
-    text-align:center;
-    color:rgba(255,255,255,.62);
-    font-size:13px;
 }
 
 .search-result{
@@ -3044,12 +3003,6 @@ body{
 .search > button:hover,#searchButton:hover,#schoolSearchButton:hover{
     background:#e9e9e9;transform:translateY(-1px)
 }
-.user-directory-tabs{gap:7px}
-.user-directory-tab{
-    min-height:40px;border-color:rgba(255,255,255,.12);
-    border-radius:12px;background:rgba(255,255,255,.045);color:#c7c7c7;
-}
-.user-directory-tab.active{border-color:#fff;background:#fff;color:#080808}
 .section-title,.school-section-header{color:#f3f3f3}
 .section-title{padding:12px 14px;font-size:11px;font-weight:800;letter-spacing:.055em}
 .friends-section{border-top-color:var(--pl-line)}
@@ -3154,7 +3107,6 @@ body{
     }
 }
 /* Consistent user rows and compact add action */
-.all-users-list{gap:8px}
 .all-user-card,#searchResult .search-result{display:flex;align-items:center;justify-content:flex-start;gap:11px;min-width:0;padding:9px 10px;border:1px solid rgba(255,255,255,.12);border-radius:15px;background:#141414;backdrop-filter:none;transition:border-color .18s ease,background .18s ease}
 .all-user-card:hover,#searchResult .search-result:hover{border-color:rgba(255,255,255,.28);background:#191919}
 .all-user-avatar{width:42px;height:42px;min-width:42px;border:1px solid #303030;background:#202020;color:#fff}
@@ -3268,13 +3220,16 @@ body{
 
         </div>
 
-        <div class="search-container">
+        <div class="search-container" aria-label="Benutzersuche">
 
             <div class="search">
 
                 <input
-                    type="text"
                     id="usernameInput"
+                    type="search"
+                    maxlength="32"
+                    aria-label="Benutzername suchen"
+                    enterkeyhint="search"
                     placeholder="Benutzer suchen..."
                     autocomplete="off"
                 >
@@ -3283,15 +3238,6 @@ body{
                     Suchen
                 </button>
 
-            </div>
-
-            <div class="user-directory-tabs" role="tablist" aria-label="Benutzersuche">
-                <button id="searchTabButton" class="user-directory-tab active" type="button" role="tab" aria-selected="true">
-                    🔎 Suchen
-                </button>
-                <button id="allUsersTabButton" class="user-directory-tab" type="button" role="tab" aria-selected="false">
-                    👥 Alle Nutzer
-                </button>
             </div>
 
             <div id="searchResult"></div>

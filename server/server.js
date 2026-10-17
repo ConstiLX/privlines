@@ -50,57 +50,28 @@ const publicPath =
         "../public"
     );
 
-const imageUploadPath =
-    path.join(
-        publicPath,
-        "uploads",
-        "images"
-    );
+// Persistente Uploads können über ein Volume außerhalb des App-Deployments
+// eingebunden werden. Ohne Konfiguration bleibt der bisherige lokale Pfad aktiv.
+const uploadsPath = path.resolve(
+    process.env.PRIVLINES_UPLOADS_DIR || path.join(publicPath, "uploads")
+);
 
-const audioUploadPath = path.join(publicPath, "uploads", "audio");
+const imageUploadPath =
+    path.join(uploadsPath, "images");
+
+const audioUploadPath = path.join(uploadsPath, "audio");
 
 const profileUploadPath =
-    path.join(
-        publicPath,
-        "uploads",
-        "profiles"
-    );
+    path.join(uploadsPath, "profiles");
 
 
 // =====================================================
 // UPLOAD-ORDNER
 // =====================================================
 
-if (
-    !fs.existsSync(
-        imageUploadPath
-    )
-) {
-
-    fs.mkdirSync(
-        imageUploadPath,
-        {
-            recursive: true
-        }
-    );
+for (const uploadDirectory of [imageUploadPath, profileUploadPath, audioUploadPath]) {
+    fs.mkdirSync(uploadDirectory, { recursive: true });
 }
-
-if (
-    !fs.existsSync(
-        profileUploadPath
-    )
-) {
-
-    fs.mkdirSync(
-        profileUploadPath,
-        {
-            recursive: true
-        }
-    );
-}
-
-
-if (!fs.existsSync(audioUploadPath)) fs.mkdirSync(audioUploadPath, { recursive: true });
 
 
 // =====================================================
@@ -131,6 +102,16 @@ app.use(
 
 app.use(
     cookieParser()
+);
+
+app.use(
+    "/uploads",
+    express.static(uploadsPath, {
+        dotfiles: "deny",
+        fallthrough: true,
+        maxAge: "30d",
+        immutable: true
+    })
 );
 
 app.use(
@@ -662,15 +643,7 @@ app.post(
                 )
             ) {
 
-                const oldFile =
-                    path.join(
-                        publicPath,
-                        oldPicture
-                            .replace(
-                                "/uploads/",
-                                "uploads/"
-                            )
-                    );
+                const oldFile = path.join(profileUploadPath, path.basename(oldPicture));
 
                 if (
                     fs.existsSync(
@@ -1653,7 +1626,7 @@ app.delete("/api/account", authenticateToken, async (req,res) => {
         await conn.query(`DELETE FROM ${table} WHERE id=?`, [userId]);
         await conn.commit();
         if (oldProfilePicture && oldProfilePicture.startsWith("/uploads/profiles/")) {
-            const oldFile = path.join(publicPath, oldProfilePicture.replace("/uploads/", "uploads/"));
+            const oldFile = path.join(profileUploadPath, path.basename(oldProfilePicture));
             try { if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile); } catch (_) {}
         }
         res.clearCookie("session", {path:"/"});

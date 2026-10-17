@@ -1,343 +1,127 @@
-/* PrivLines · Aurora design system */
+/* PrivLines monochrome design system */
 :root {
     color-scheme: dark;
-    --pl-bg: #0a1020;
-    --pl-bg-soft: #0e1729;
-    --pl-surface: #111c30;
-    --pl-surface-raised: #18263d;
-    --pl-surface-hover: #1d2d47;
-    --pl-line: rgba(168, 190, 226, .14);
-    --pl-line-strong: rgba(168, 190, 226, .24);
-    --pl-text: #eef4ff;
-    --pl-muted: #9aaac5;
-    --pl-faint: #72829e;
-    --pl-mint: #76e5d1;
-    --pl-violet: #a492ff;
-    --pl-blue: #73a8ff;
-    --pl-danger: #ff879d;
-    --pl-shadow: 0 24px 70px rgba(0, 0, 0, .34);
+    --pl-bg: #050505;
+    --pl-panel: #101010;
+    --pl-surface: #171717;
+    --pl-raised: #202020;
+    --pl-line: rgba(255,255,255,.10);
+    --pl-line-strong: rgba(255,255,255,.22);
+    --pl-text: #f7f7f7;
+    --pl-muted: #a3a3a3;
+    --pl-dim: #737373;
+    --pl-accent: #fff;
+    --pl-shadow: 0 24px 70px rgba(0,0,0,.48);
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
-
-html { color-scheme: dark; }
+html { color-scheme: dark; scroll-behavior: smooth; }
 body {
     color: var(--pl-text);
-    background:
-        radial-gradient(ellipse at 12% 0%, rgba(118, 229, 209, .10), transparent 38%),
-        radial-gradient(ellipse at 88% 100%, rgba(164, 146, 255, .11), transparent 42%),
-        var(--pl-bg);
-    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: radial-gradient(ellipse at 50% -18%, #222 0, #0b0b0b 44%, var(--pl-bg) 78%);
+    font-family: inherit;
 }
-
-button, input, textarea, select { font: inherit; }
-button { -webkit-tap-highlight-color: transparent; }
-button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
-    outline: 3px solid rgba(118, 229, 209, .72) !important;
-    outline-offset: 3px;
-}
-
-/* Main messenger */
-body:has(.app) { background: var(--pl-bg); }
-.background {
-    background:
-        radial-gradient(ellipse at 4% 8%, rgba(118, 229, 209, .12), transparent 34%),
-        radial-gradient(ellipse at 94% 88%, rgba(164, 146, 255, .13), transparent 36%),
-        linear-gradient(145deg, #0a1020, #0d1527 52%, #10152a);
-}
+button,input,textarea,select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; transition: transform .18s ease, background .2s ease, color .2s ease, border-color .2s ease, box-shadow .2s ease; }
+button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible { outline: 2px solid #fff !important; outline-offset: 3px; }
+button:disabled { cursor: wait; opacity: .55; }
+body:has(.app) { background: #080808; }
+.background { background: radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.06),transparent 46%),#080808; }
 .app { gap: 14px; padding: 14px; }
-.sidebar, .chat {
-    border: 1px solid var(--pl-line);
-    border-radius: 24px;
-    box-shadow: var(--pl-shadow);
-}
-.sidebar {
-    color: var(--pl-text);
-    background: linear-gradient(165deg, rgba(20, 32, 53, .98), rgba(13, 22, 39, .98));
-}
-.sidebar-header {
-    padding: 19px 17px 15px;
-    border-bottom: 1px solid var(--pl-line);
-    background: rgba(255, 255, 255, .025);
-}
+.sidebar,.chat { border: 1px solid var(--pl-line); border-radius: 24px; box-shadow: var(--pl-shadow); animation: pl-rise .55s cubic-bezier(.2,.75,.25,1) both; }
+.sidebar { color: var(--pl-text); background: linear-gradient(160deg,#151515,#0c0c0c 76%); }
+.sidebar-header { padding: 19px 17px 15px; border-bottom: 1px solid var(--pl-line); background: rgba(255,255,255,.018); }
 .logo img { max-height: 42px; width: auto; object-position: left center; }
-.edition-badge {
-    border: 1px solid rgba(118, 229, 209, .22) !important;
-    border-radius: 999px !important;
-    background: rgba(118, 229, 209, .09) !important;
-    color: var(--pl-mint) !important;
-    letter-spacing: .11em;
+.edition-badge { border: 1px solid var(--pl-line-strong) !important; border-radius: 999px !important; background: #1b1b1b !important; color: #eee !important; letter-spacing: .1em; }
+.my-profile { border: 1px solid var(--pl-line); border-radius: 16px; background: rgba(255,255,255,.035); transition: background .2s ease, transform .2s ease; }
+.my-profile:hover { background: rgba(255,255,255,.075); transform: translateY(-1px); }
+.my-profile-avatar,.friend-avatar,.chat-avatar { border: 1px solid #393939 !important; background: linear-gradient(145deg,#333,#171717) !important; color: #fff !important; }
+.my-profile-name,.friend-name { color: var(--pl-text); }
+.my-profile-label,.friend-status { color: var(--pl-muted); }
+.search-container { padding: 14px; border-bottom: 1px solid var(--pl-line); }
+.search { display: flex; align-items: stretch; gap: 9px; }
+.search input,#usernameInput,.school-search-box input,.school-code-input,.school-create-input,.school-create-textarea,.group-create-input,.group-create-textarea,#messageInput,.school-channel-input-area input,.group-input-area input {
+    min-width: 0; border: 1px solid var(--pl-line-strong) !important; border-radius: 13px !important; background: #0c0c0c !important; color: var(--pl-text) !important; box-shadow: inset 0 1px 0 rgba(255,255,255,.025);
 }
-.my-profile {
-    border: 1px solid var(--pl-line);
-    border-radius: 16px;
-    background: rgba(255, 255, 255, .035);
+.search input,#usernameInput { flex: 1; min-height: 44px; padding: 0 13px; }
+.search input::placeholder,#messageInput::placeholder,input::placeholder,textarea::placeholder { color: var(--pl-dim); }
+.search input:focus,#usernameInput:focus,.school-search-box input:focus,#messageInput:focus { border-color: #eee !important; box-shadow: 0 0 0 3px rgba(255,255,255,.08) !important; }
+.search > button,#searchButton,.school-search-box button,.school-action-button,.standard-group-create,.school-result-button,.group-add-members-button {
+    min-height: 44px; padding: 0 17px; border: 1px solid #fff !important; border-radius: 13px !important; background: #fff !important; color: #080808 !important; font-weight: 750; box-shadow: 0 5px 18px rgba(255,255,255,.08);
 }
-.my-profile:hover { border-color: var(--pl-line-strong); background: rgba(255, 255, 255, .065); }
-.my-profile-avatar, .friend-avatar, .chat-avatar, .all-user-avatar {
-    border-color: rgba(118, 229, 209, .24) !important;
-    background: linear-gradient(145deg, rgba(118, 229, 209, .18), rgba(164, 146, 255, .20)) !important;
-    color: var(--pl-text) !important;
-}
-.my-profile-name, .friend-name, .all-user-name { color: var(--pl-text); }
-.my-profile-label, .friend-status, .all-user-username { color: var(--pl-muted); }
-.search-container { border-bottom-color: var(--pl-line); }
-.search input, .school-search-box input, #usernameInput,
-.school-code-input, .school-create-input, .school-create-textarea,
-.group-create-input, .group-create-textarea, #messageInput,
-.school-channel-input-area input, .group-input-area input {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 13px !important;
-    background: rgba(7, 13, 25, .72) !important;
-    color: var(--pl-text) !important;
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .025);
-}
-.search input::placeholder, #messageInput::placeholder,
-.school-search-box input::placeholder, input::placeholder, textarea::placeholder { color: var(--pl-faint); }
-.search input:focus, .school-search-box input:focus, #usernameInput:focus,
-.school-code-input:focus, .school-create-input:focus, .school-create-textarea:focus,
-.group-create-input:focus, .group-create-textarea:focus, #messageInput:focus {
-    border-color: rgba(118, 229, 209, .58) !important;
-    box-shadow: 0 0 0 3px rgba(118, 229, 209, .10) !important;
-}
-.search > button, #searchButton, #schoolSearchButton,
-.school-search-box button, .school-action-button, .standard-group-create,
-.school-result-button, .group-add-members-button {
-    border: 1px solid rgba(118, 229, 209, .30) !important;
-    border-radius: 13px !important;
-    background: rgba(118, 229, 209, .12) !important;
-    color: var(--pl-mint) !important;
-    font-weight: 700;
-}
-.search > button:hover, #searchButton:hover, #schoolSearchButton:hover,
-.school-search-box button:hover, .school-action-button:hover, .standard-group-create:hover,
-.school-result-button:hover, .group-add-members-button:hover {
-    background: rgba(118, 229, 209, .20) !important;
-    transform: translateY(-1px);
-}
-.user-directory-tab {
-    border-color: var(--pl-line) !important;
-    border-radius: 12px !important;
-    background: rgba(255, 255, 255, .04) !important;
-    color: var(--pl-muted) !important;
-}
-.user-directory-tab.active {
-    border-color: rgba(118, 229, 209, .34) !important;
-    background: rgba(118, 229, 209, .13) !important;
-    color: var(--pl-mint) !important;
-}
-.section-title, .school-section-header { color: var(--pl-text); }
-.section-title { letter-spacing: .08em; }
-.friends-section, .friends-section > .section-title { border-color: var(--pl-line); background: transparent; }
-.friend { border: 1px solid transparent; border-radius: 15px; }
-.friend:hover { border-color: var(--pl-line); background: rgba(255, 255, 255, .04); }
-.friend.active {
-    border: 1px solid rgba(118, 229, 209, .28);
-    border-left: 3px solid var(--pl-mint);
-    background: linear-gradient(100deg, rgba(118, 229, 209, .14), rgba(164, 146, 255, .08));
-    color: var(--pl-text);
-}
-.friend.active .friend-name, .friend.active .friend-status { color: var(--pl-text); }
-.status { border-color: var(--pl-line); background: rgba(255, 255, 255, .025); color: var(--pl-muted); }
-.ai-tab-button {
-    border: 1px solid rgba(164, 146, 255, .26) !important;
-    border-radius: 14px !important;
-    background: linear-gradient(110deg, rgba(164, 146, 255, .12), rgba(118, 229, 209, .08)) !important;
-    color: #ded7ff !important;
-}
-.all-user-card, #searchResult .search-result {
-    border-color: var(--pl-line) !important;
-    border-radius: 15px !important;
-    background: rgba(255, 255, 255, .035) !important;
-}
-.all-user-card:hover, #searchResult .search-result:hover { border-color: var(--pl-line-strong) !important; background: rgba(255, 255, 255, .065) !important; }
-.all-user-card .friend-action-button, #searchResult .friend-action-button {
-    border-color: rgba(118, 229, 209, .30) !important;
-    background: rgba(118, 229, 209, .14) !important;
-    color: var(--pl-mint) !important;
-}
-
-.chat { color: var(--pl-text); background: linear-gradient(160deg, #111b2e, #0e1728); }
-.chat-header, .group-view-header, .school-channel-header {
-    border-bottom: 1px solid var(--pl-line) !important;
-    background: rgba(17, 28, 48, .92) !important;
-    color: var(--pl-text) !important;
-}
-#chatPartner, .school-channel-title, .group-view-name { color: var(--pl-text) !important; }
-.chat-subtitle, .school-channel-subtitle, .group-view-meta { color: var(--pl-muted) !important; }
-.chat-avatar { border-radius: 15px !important; }
-.call-button, .chat-action-button, .mobile-back-button,
-.school-channel-back, .group-view-back, .call-control-button {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 13px !important;
-    background: rgba(255, 255, 255, .045) !important;
-    color: var(--pl-text) !important;
-}
-.call-button:hover:not(:disabled), .chat-action-button:hover,
-.mobile-back-button:hover, .school-channel-back:hover, .group-view-back:hover {
-    border-color: rgba(118, 229, 209, .32) !important;
-    background: rgba(118, 229, 209, .12) !important;
-    color: var(--pl-mint) !important;
-}
-#messages, #schoolChannelMessages, #groupMessages, .school-channel-messages, .group-messages {
-    background:
-        radial-gradient(ellipse at 50% 0%, rgba(164, 146, 255, .045), transparent 60%),
-        transparent !important;
-    scrollbar-color: rgba(154, 170, 197, .35) transparent;
-}
-.empty-chat, .school-channel-empty { color: var(--pl-muted) !important; }
-.message, .school-message, .group-message {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 19px 19px 19px 6px !important;
-    background: rgba(27, 41, 64, .92) !important;
-    color: var(--pl-text) !important;
-    box-shadow: 0 8px 22px rgba(0, 0, 0, .12) !important;
-    backdrop-filter: none !important;
-}
-.message.mine, .school-message.mine, .group-message.mine {
-    border-color: rgba(164, 146, 255, .42) !important;
-    border-radius: 19px 19px 6px 19px !important;
-    background: linear-gradient(135deg, #7664d9, #594cc0) !important;
-    color: #fff !important;
-}
-.message-user, .school-message-user, .message-time, .school-message-time { color: #b3bfd3 !important; }
-.message.mine .message-user, .message.mine .message-time,
-.school-message.mine .school-message-user, .school-message.mine .school-message-time { color: rgba(255, 255, 255, .72) !important; }
-.message-image, .message-video { border-color: var(--pl-line) !important; }
-.message-area, .school-channel-input-area, .group-input-area {
-    border-top: 1px solid var(--pl-line) !important;
-    background: rgba(17, 28, 48, .96) !important;
-    backdrop-filter: blur(16px);
-}
-#voiceButton, #photoButton, #schoolChannelSend, #groupSendButton {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 13px !important;
-    background: rgba(255, 255, 255, .055) !important;
-    color: var(--pl-text) !important;
-}
-#voiceButton:hover:not(:disabled), #photoButton:hover:not(:disabled), #schoolChannelSend:hover, #groupSendButton:hover {
-    border-color: rgba(118, 229, 209, .30) !important;
-    background: rgba(118, 229, 209, .13) !important;
-    color: var(--pl-mint) !important;
-}
-#sendButton, #schoolChannelSend, #groupSendButton, .school-channel-input-area button, .group-input-area button {
-    border: 1px solid rgba(118, 229, 209, .48) !important;
-    border-radius: 14px !important;
-    background: linear-gradient(135deg, #4dc9b8, #55bfae) !important;
-    color: #071a1b !important;
-    font-weight: 800;
-    box-shadow: 0 8px 22px rgba(77, 201, 184, .15);
-}
-#sendButton:hover:not(:disabled), #schoolChannelSend:hover, #groupSendButton:hover,
-.school-channel-input-area button:hover, .group-input-area button:hover {
-    filter: brightness(1.07);
-    transform: translateY(-1px);
-}
-.notification {
-    border-color: rgba(118, 229, 209, .24) !important;
-    border-radius: 17px !important;
-    background: rgba(18, 30, 50, .96) !important;
-    box-shadow: var(--pl-shadow) !important;
-}
-.notification-title { color: var(--pl-mint) !important; }
-.notification-text { color: var(--pl-text) !important; }
-
-/* Dialogs, profile menus, schools and groups */
-.feature-menu, .profile-menu, .group-modal-card, .school-modal-card, .school-codes-card,
-.school-channel-view, .group-view, #schoolChannelView, #groupView {
-    border-color: var(--pl-line) !important;
-    background: linear-gradient(155deg, #17243a, #101a2d) !important;
-    color: var(--pl-text) !important;
-    box-shadow: var(--pl-shadow) !important;
-}
-.group-modal, .school-modal, .school-codes-modal { background: rgba(4, 9, 18, .76) !important; }
-.group-modal-title, .school-modal-title, .school-codes-title,
-.school-result-name, .school-code-name { color: var(--pl-text) !important; }
-.group-modal-subtitle, .school-modal-subtitle, .school-codes-subtitle,
-.school-code-meta, .school-result-info { color: var(--pl-muted) !important; }
-.group-modal-actions button, .school-modal-actions button, .school-codes-close,
-.profile-menu button, .feature-menu button {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 12px !important;
-    background: rgba(255, 255, 255, .06) !important;
-    color: var(--pl-text) !important;
-}
-.group-modal-submit, .school-modal-submit, .school-codes-close {
-    border-color: rgba(118, 229, 209, .40) !important;
-    background: var(--pl-mint) !important;
-    color: #071a1b !important;
-}
-.school-code-value { border: 1px solid rgba(118, 229, 209, .25); border-radius: 12px !important; background: rgba(118, 229, 209, .12) !important; color: var(--pl-mint) !important; }
-.school-section-header:hover, .school-channel-card:hover, .my-school-card:hover { background-color: rgba(255, 255, 255, .05); }
-.school-channel-card, .my-school-card, .school-result, .group-card,
-.school-code-card, .blocked-user-card {
-    border-color: var(--pl-line) !important;
-    border-radius: 15px !important;
-    background: rgba(255, 255, 255, .035) !important;
-    color: var(--pl-text) !important;
-}
-.school-channel-name, .school-channel-info, .my-school-name, .my-school-info { color: var(--pl-text) !important; }
-.school-empty, .empty-list { color: var(--pl-muted) !important; }
-
-/* Welcome, login, registration and AI */
+.search > button:hover:not(:disabled),#searchButton:hover:not(:disabled),.school-search-box button:hover,.school-action-button:hover,.standard-group-create:hover,.school-result-button:hover,.group-add-members-button:hover { background: #d9d9d9 !important; transform: translateY(-2px); box-shadow: 0 9px 22px rgba(0,0,0,.35); }
+#searchResult { margin-top: 10px; }
+#searchResult:empty { display:none; }
+#searchResult .search-loading,#searchResult .search-error { padding: 12px; color: var(--pl-muted); font-size: 13px; animation: pl-fade .2s ease both; }
+#searchResult .search-error { color: #e4e4e4; }
+.section-title,.school-section-header { color: var(--pl-text); }
+.section-title { letter-spacing: .07em; }
+.friends-section,.friends-section > .section-title { border-color: var(--pl-line); background: transparent; }
+.friend { border: 1px solid transparent; border-radius: 15px; transition: transform .18s ease, background .18s ease, border-color .18s ease; }
+.friend:hover { border-color: var(--pl-line); background: rgba(255,255,255,.045); transform: translateX(2px); }
+.friend.active { border: 1px solid #eee; border-left: 3px solid #fff; background: #f4f4f4; color: #090909; }
+.friend.active .friend-name,.friend.active .friend-status { color: #111; }
+.status { border-color: var(--pl-line); background: rgba(255,255,255,.025); color: var(--pl-muted); }
+.ai-tab-button { border: 1px solid var(--pl-line-strong) !important; border-radius: 14px !important; background: linear-gradient(120deg,#292929,#151515) !important; color: #fff !important; }
+.all-user-card,#searchResult .search-result { border: 1px solid var(--pl-line) !important; border-radius: 15px !important; background: #151515 !important; animation: pl-rise .3s ease both; }
+.all-user-card:hover,#searchResult .search-result:hover { border-color: var(--pl-line-strong) !important; background: #1b1b1b !important; }
+.all-user-name { color: #fff; }.all-user-username { color: var(--pl-muted); }
+#searchResult .friend-action-button { border: 1px solid #fff !important; background: #fff !important; color: #090909 !important; border-radius: 999px !important; }
+#searchResult .friend-action-button:hover:not(:disabled) { transform: scale(1.05); background: #ddd !important; }
+.chat { color: var(--pl-text); background: linear-gradient(155deg,#141414,#0d0d0d); }
+.chat-header,.group-view-header,.school-channel-header { border-bottom: 1px solid var(--pl-line) !important; background: rgba(17,17,17,.95) !important; color: var(--pl-text) !important; }
+#chatPartner,.school-channel-title,.group-view-name { color: var(--pl-text) !important; }
+.chat-subtitle,.school-channel-subtitle,.group-view-meta { color: var(--pl-muted) !important; }
+.call-button,.chat-action-button,.mobile-back-button,.school-channel-back,.group-view-back,.call-control-button { border: 1px solid var(--pl-line-strong) !important; border-radius: 12px !important; background: #1a1a1a !important; color: #fff !important; }
+.call-button:hover:not(:disabled),.chat-action-button:hover,.mobile-back-button:hover,.school-channel-back:hover,.group-view-back:hover { border-color: #fff !important; background: #303030 !important; transform: translateY(-1px); }
+#messages,#schoolChannelMessages,#groupMessages,.school-channel-messages,.group-messages { background: radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.025),transparent 62%),transparent !important; scrollbar-color: #444 transparent; }
+.empty-chat,.school-channel-empty { color: var(--pl-muted) !important; }
+.message,.school-message,.group-message { border: 1px solid var(--pl-line) !important; border-radius: 19px 19px 19px 6px !important; background: #202020 !important; color: #f7f7f7 !important; box-shadow: 0 7px 22px rgba(0,0,0,.15) !important; backdrop-filter: none !important; animation: pl-message-in .24s cubic-bezier(.2,.8,.2,1) both; }
+.message.mine,.school-message.mine,.group-message.mine { border-color: #eee !important; border-radius: 19px 19px 6px 19px !important; background: #f2f2f2 !important; color: #090909 !important; }
+.message-user,.school-message-user,.message-time,.school-message-time { color: #aaa !important; }
+.message.mine .message-user,.message.mine .message-time,.school-message.mine .school-message-user,.school-message.mine .school-message-time { color: #555 !important; }
+.message-image,.message-video { border-color: var(--pl-line); }
+.message-area,.school-channel-input-area,.group-input-area { border-top: 1px solid var(--pl-line) !important; background: rgba(16,16,16,.97) !important; backdrop-filter: blur(16px); }
+#voiceButton,#photoButton { border: 1px solid var(--pl-line-strong) !important; border-radius: 12px !important; background: #1c1c1c !important; color: #fff !important; }
+#voiceButton:hover:not(:disabled),#photoButton:hover:not(:disabled) { border-color: #fff !important; background: #303030 !important; transform: translateY(-1px); }
+#sendButton,#schoolChannelSend,#groupSendButton,.school-channel-input-area button,.group-input-area button { border: 1px solid #fff !important; border-radius: 13px !important; background: #fff !important; color: #080808 !important; font-weight: 800; box-shadow: 0 6px 20px rgba(255,255,255,.08); }
+#sendButton:hover:not(:disabled),#schoolChannelSend:hover,.school-channel-input-area button:hover,.group-input-area button:hover { background: #ddd !important; transform: translateY(-2px); }
+.notification { border: 1px solid var(--pl-line-strong) !important; border-radius: 16px !important; background: #171717 !important; box-shadow: var(--pl-shadow) !important; }
+.notification-title { color: #fff !important; }.notification-text { color: #ddd !important; }
+.feature-menu,.profile-menu,.group-modal-card,.school-modal-card,.school-codes-card,.school-channel-view,.group-view,#schoolChannelView,#groupView { border-color: var(--pl-line) !important; background: linear-gradient(155deg,#1d1d1d,#101010) !important; color: var(--pl-text) !important; box-shadow: var(--pl-shadow) !important; }
+.group-modal,.school-modal,.school-codes-modal { background: rgba(0,0,0,.78) !important; }
+.group-modal-title,.school-modal-title,.school-codes-title,.school-result-name,.school-code-name { color: #fff !important; }
+.group-modal-subtitle,.school-modal-subtitle,.school-codes-subtitle,.school-code-meta,.school-result-info { color: var(--pl-muted) !important; }
+.group-modal-actions button,.school-modal-actions button,.school-codes-close,.profile-menu button,.feature-menu button { border: 1px solid var(--pl-line-strong) !important; border-radius: 12px !important; background: #222 !important; color: #fff !important; }
+.group-modal-submit,.school-modal-submit,.school-codes-close { border-color: #fff !important; background: #fff !important; color: #080808 !important; }
+.school-code-value { border: 1px solid var(--pl-line-strong); border-radius: 12px !important; background: #202020 !important; color: #fff !important; }
+.school-channel-card,.my-school-card,.school-result,.group-card,.school-code-card,.blocked-user-card { border-color: var(--pl-line) !important; border-radius: 15px !important; background: #151515 !important; color: #fff !important; }
+.school-channel-name,.school-channel-info,.my-school-name,.my-school-info { color: #fff !important; }
+.school-empty,.empty-list { color: var(--pl-muted) !important; }
 body:has(.container) .container { position: relative; z-index: 1; }
-body:has(.container) .card {
-    border: 1px solid rgba(168, 190, 226, .18) !important;
-    border-radius: 26px !important;
-    background: linear-gradient(145deg, rgba(24, 38, 61, .94), rgba(15, 25, 43, .96)) !important;
-    box-shadow: var(--pl-shadow), inset 0 1px 0 rgba(255, 255, 255, .045) !important;
-    color: var(--pl-text) !important;
-}
-body:has(.container) h1, body:has(.container) h2 { color: var(--pl-text) !important; }
-body:has(.container) .subtitle, body:has(.container) .footer,
-body:has(.container) .hint, body:has(.container) .switch,
-body:has(.container) .register, body:has(.container) .login { color: var(--pl-muted) !important; }
-body:has(.container) .edition {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 20px !important;
-    background: rgba(255, 255, 255, .04) !important;
-    color: var(--pl-text) !important;
-}
-body:has(.container) .edition:hover { border-color: rgba(118, 229, 209, .35) !important; background: rgba(118, 229, 209, .07) !important; }
-body:has(.container) .edition h2, body:has(.container) .edition p { color: var(--pl-text) !important; }
-body:has(.container) input {
-    border: 1px solid var(--pl-line) !important;
-    border-radius: 13px !important;
-    background: rgba(7, 13, 25, .72) !important;
-    color: var(--pl-text) !important;
-}
-body:has(.container) input:focus { border-color: rgba(118, 229, 209, .58) !important; box-shadow: 0 0 0 3px rgba(118, 229, 209, .10) !important; }
-body:has(.container) button, body:has(.container) .button {
-    border: 1px solid rgba(118, 229, 209, .4) !important;
-    border-radius: 13px !important;
-    background: linear-gradient(135deg, #4dc9b8, #55bfae) !important;
-    color: #071a1b !important;
-    font-weight: 800 !important;
-}
-body:has(.container) a { color: var(--pl-mint); }
-body:has(.container) .school-badge, body:has(.container) .school-label { background: rgba(164, 146, 255, .14) !important; color: #d6ceff !important; }
-body:has(.container) .logo { background: linear-gradient(135deg, var(--pl-mint), var(--pl-violet)) !important; border-radius: 20px !important; }
-body:has(.container) .logo img, body:has(.container) .logo-image { filter: drop-shadow(0 5px 12px rgba(0, 0, 0, .18)); }
-
-.background:has(+ .chat-container) { background: radial-gradient(ellipse at 15% 0%, rgba(118, 229, 209, .11), transparent 42%), radial-gradient(ellipse at 90% 100%, rgba(164, 146, 255, .12), transparent 42%), var(--pl-bg); }
-.chat-container {
-    border-color: var(--pl-line) !important;
-    border-radius: 25px !important;
-    background: rgba(15, 25, 43, .94) !important;
-    box-shadow: var(--pl-shadow);
-}
-.chat-container .chat-header { border-color: var(--pl-line) !important; background: rgba(255, 255, 255, .025) !important; }
+body:has(.container) .card { border: 1px solid var(--pl-line-strong) !important; border-radius: 25px !important; background: linear-gradient(145deg,#1b1b1b,#101010) !important; box-shadow: var(--pl-shadow),inset 0 1px 0 rgba(255,255,255,.04) !important; color: #fff !important; animation: pl-rise .55s ease both; }
+body:has(.container) h1,body:has(.container) h2 { color: #fff !important; }
+body:has(.container) .subtitle,body:has(.container) .footer,body:has(.container) .hint,body:has(.container) .switch,body:has(.container) .register,body:has(.container) .login { color: var(--pl-muted) !important; }
+body:has(.container) .edition { border: 1px solid var(--pl-line) !important; border-radius: 20px !important; background: #171717 !important; color: #fff !important; transition: transform .22s ease,border-color .22s ease; }
+body:has(.container) .edition:hover { border-color: #aaa !important; transform: translateY(-3px); }
+body:has(.container) .edition h2,body:has(.container) .edition p { color: #fff !important; }
+body:has(.container) input { border: 1px solid var(--pl-line-strong) !important; border-radius: 13px !important; background: #0c0c0c !important; color: #fff !important; }
+body:has(.container) input:focus { border-color: #eee !important; box-shadow: 0 0 0 3px rgba(255,255,255,.08) !important; }
+body:has(.container) button,body:has(.container) .button { border: 1px solid #fff !important; border-radius: 13px !important; background: #fff !important; color: #080808 !important; font-weight: 800 !important; }
+body:has(.container) button:hover,body:has(.container) .button:hover { background: #ddd !important; transform: translateY(-2px); }
+body:has(.container) a { color: #fff; }
+body:has(.container) .school-badge,body:has(.container) .school-label { background: #262626 !important; color: #eee !important; }
+body:has(.container) .logo { background: linear-gradient(135deg,#fff,#777) !important; border-radius: 20px !important; }
+.background:has(+ .chat-container) { background: radial-gradient(ellipse at 50% 0%,rgba(255,255,255,.055),transparent 48%),#080808; }
+.chat-container { border-color: var(--pl-line) !important; border-radius: 25px !important; background: rgba(15,15,15,.96) !important; box-shadow: var(--pl-shadow); }
+.chat-container .chat-header { border-color: var(--pl-line) !important; background: rgba(255,255,255,.025) !important; }
 .chat-container #chat-box { background: transparent !important; }
-.chat-container .msg { border: 1px solid var(--pl-line); border-radius: 18px; background: rgba(27, 41, 64, .92); color: var(--pl-text); }
-.chat-container .msg.user { border-color: rgba(164, 146, 255, .36); background: linear-gradient(135deg, #7664d9, #594cc0); color: #fff; }
-.chat-container .chat-input { border-color: var(--pl-line) !important; background: rgba(17, 28, 48, .96) !important; }
-.chat-container .chat-input input { border-color: var(--pl-line) !important; border-radius: 13px !important; background: rgba(7, 13, 25, .72) !important; color: var(--pl-text) !important; }
-.chat-container .chat-input button, .chat-container .back-button { border: 1px solid rgba(118, 229, 209, .36) !important; border-radius: 13px !important; background: var(--pl-mint) !important; color: #071a1b !important; }
-
-@media (max-width: 650px) {
-    .app { gap: 0; padding: 8px; }
-    .sidebar, .chat { border-radius: 20px; }
-    .chat-header { padding-inline: 12px; }
-}
-@media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
-}
+.chat-container .msg { border: 1px solid var(--pl-line); border-radius: 18px; background: #202020; color: #fff; animation: pl-message-in .24s ease both; }
+.chat-container .msg.user { border-color: #eee; background: #f2f2f2; color: #090909; }
+.chat-container .chat-input { border-color: var(--pl-line) !important; background: #111 !important; }
+.chat-container .chat-input input { border-color: var(--pl-line-strong) !important; border-radius: 13px !important; background: #0c0c0c !important; color: #fff !important; }
+.chat-container .chat-input button,.chat-container .back-button { border: 1px solid #fff !important; border-radius: 13px !important; background: #fff !important; color: #080808 !important; }
+@keyframes pl-rise { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes pl-message-in { from { opacity: 0; transform: translateY(6px) scale(.985); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@media(max-width:650px) { .app { gap: 0; padding: 8px; }.sidebar,.chat { border-radius: 20px; }.search-container { padding: 12px; }.search { gap: 7px; }.search input,#usernameInput { min-height: 44px; }.search > button,#searchButton { min-height: 44px; padding: 0 14px; }.chat-header { padding-inline: 12px; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } }
