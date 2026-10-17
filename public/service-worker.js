@@ -1,4 +1,4 @@
-/* Activate the notification behavior change without requiring all tabs to close. */
+/* PrivLines PWA background notifications */
 self.addEventListener("install", event => {
     event.waitUntil(self.skipWaiting());
 });
@@ -7,7 +7,6 @@ self.addEventListener("activate", event => {
     event.waitUntil(self.clients.claim());
 });
 
-/* PrivLines Push-Benachrichtigungen im Hintergrund */
 self.addEventListener("push", event => {
     event.waitUntil((async () => {
         let data = {};
@@ -17,9 +16,12 @@ self.addEventListener("push", event => {
             console.warn("PrivLines: Push-Payload ist kein gültiges JSON.", error);
         }
 
-        // Im Vordergrund übernimmt die geöffnete Seite selbst die Meldung.
-        // Im Hintergrund bzw. bei gesperrtem Bildschirm bleibt der System-Push aktiv.
-        const clients = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        // In einem sichtbaren und fokussierten App-Fenster zeigt die Seite
+        // selbst ihre Nachricht. Im Hintergrund wird der System-Push gezeigt.
+        const clients = await self.clients.matchAll({
+            type: "window",
+            includeUncontrolled: true
+        });
         const appIsFocused = clients.some(client => {
             try {
                 return new URL(client.url).origin === self.location.origin
@@ -31,39 +33,77 @@ self.addEventListener("push", event => {
         });
         if (appIsFocused) return;
 
-        const isCall = data.kind === "call";
+        const isPrivateCall = data.kind === "call";
         const isGroupCall = data.kind === "group-call";
-        const call = isCall || isGroupCall;
+        const isCall = isPrivateCall || isGroupCall;
+
         const options = {
-            body: data.body || (call ? "Du wirst angerufen." : "Du hast eine neue Nachricht."),
+            body: data.body || (isCall
+                ? "Du wirst angerufen."
+                : "Du hast eine neue Nachricht."),
             icon: "/logo_black.png",
             badge: "/logo_black.png",
-            tag: call ? `privlines-call-${data.callId || "incoming"}` : `privlines-message-${data.chatId || "new"}`,
-            renotify: call,
-            requireInteraction: call,
+            tag: isCall
+                ? `privlines-call-${data.callId || "incoming"}`
+                : `privlines-message-${data.chatId || "new"}`,
+            renotify: isCall,
+            requireInteraction: isCall,
             data: {
                 url: data.url || "/chat.html",
                 callId: data.callId || null,
                 kind: data.kind || "message"
             },
-            ...(call ? { actions: [{ action: "open", title: "PrivLines öffnen" }] } : {})
+            // Private Einzelanrufe können direkt aus der Benachrichtigung
+            // angenommen oder abgelehnt werden. Gruppenanrufe öffnen die PWA.
+            ...(isPrivateCall
+                ? {
+                    actions: [
+                        { action: "answer", title: "Annehmen" },
+                        { action: "reject", title: "Ablehnen" }
+                    ]
+                }
+                : {})
         };
+
         await self.registration.showNotification(data.title || "PrivLines", options);
     })());
 });
 
 self.addEventListener("notificationclick", event => {
-    event.notification.close();
-    const data = event.notification.data || {};
-    const targetUrl = new URL(data.url || "/chat.html", self.location.origin).href;
+    const notification = event.notification;
+    const data = notification.data || {};
+    notification.close();
+
+    const targetUrl = new URL(data.url || "/chat.html", self.location.origin);
+
+    // call.js liest diese Parameter bereits aus und führt die gewählte Aktion
+    // aus, sobald der Server das noch gültige Anrufangebot zurückgeliefert hat.
+    if (
+        data.kind === "call"
+        && data.callId
+        && (event.action === "answer" || event.action === "reject")
+    ) {
+        targetUrl.searchParams.set("nativeCallId", String(data.callId));
+        targetUrl.searchParams.set("nativeCallAction", event.action);
+    }
+
     event.waitUntil((async () => {
-        const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+        const windows = await self.clients.matchAll({
+            type: "window",
+            includeUncontrolled: true
+        });
+
         for (const client of windows) {
-            if (new URL(client.url).origin === self.location.origin) {
-                await client.navigate(targetUrl);
-                return client.focus();
+            try {
+                if (new URL(client.url).origin === self.location.origin) {
+                    await client.navigate(targetUrl.href);
+                    return client.focus();
+                }
+            } catch (error) {
+                console.warn("PrivLines: PWA-Fenster konnte nicht geöffnet werden.", error);
             }
         }
-        return self.clients.openWindow(targetUrl);
+
+        return self.clients.openWindow(targetUrl.href);
     })());
 });
