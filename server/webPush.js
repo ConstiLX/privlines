@@ -87,7 +87,8 @@ async function sendPush(subscription, payload) {
             "Authorization": `vapid t=${vapidToken(subscription.endpoint, keys)}, k=${b64url(keys.publicKey)}`,
             "Content-Encoding": "aes128gcm",
             "Content-Type": "application/octet-stream",
-            "TTL": "86400"
+            // Anrufbenachrichtigungen sollen nicht Stunden später zugestellt werden.
+            "TTL": payload?.kind === "call" || payload?.kind === "group-call" ? "90" : "86400"
         },
         body: encryptPayload(subscription, payload)
     });

@@ -2660,40 +2660,6 @@ socket.on(
 );
 
 
-/* ======================================================
-   BROWSER-BENACHRICHTIGUNGEN
-   ====================================================== */
-
-function sendBrowserNotification(title, text) {
-    try {
-        if (typeof window === "undefined" || !("Notification" in window)) {
-            return;
-        }
-
-        if (Notification.permission !== "granted") {
-            return;
-        }
-
-        const notification = new Notification(
-            String(title || "PrivLines"),
-            {
-                body: String(text || ""),
-                icon: "/logo6.png",
-                tag: "privlines-notification"
-            }
-        );
-
-        notification.onclick = () => {
-            try {
-                window.focus();
-            } catch {}
-            notification.close();
-        };
-    } catch (error) {
-        console.warn("Browser-Benachrichtigung konnte nicht angezeigt werden:", error);
-    }
-}
-
 async function requestNotificationPermission() {
     try {
         if (typeof window === "undefined" || !("Notification" in window)) {
@@ -2718,7 +2684,10 @@ async function registerBackgroundPush() {
 
         const registration = await navigator.serviceWorker.register("/service-worker.js");
         const keyResponse = await fetch("/api/push/public-key", { credentials: "include", cache: "no-store" });
-        if (!keyResponse.ok) return;
+        if (!keyResponse.ok) {
+            console.warn(`Push-Schlüssel konnten nicht geladen werden (HTTP ${keyResponse.status}).`);
+            return;
+        }
         const { publicKey } = await keyResponse.json();
         if (!publicKey) return;
 
@@ -2735,12 +2704,15 @@ async function registerBackgroundPush() {
             });
         }
 
-        await fetch("/api/push/subscribe", {
+        const subscribeResponse = await fetch("/api/push/subscribe", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subscription: subscription.toJSON() })
         });
+        if (!subscribeResponse.ok) {
+            throw new Error(`Push-Abo konnte nicht gespeichert werden (HTTP ${subscribeResponse.status}).`);
+        }
     } catch (error) {
         console.warn("Hintergrund-Benachrichtigungen konnten nicht eingerichtet werden:", error);
     }
@@ -2798,9 +2770,8 @@ socket.on(
             data.text
         );
 
-        // System-Push wird serverseitig ausgelöst und vom Service Worker
-        // nur angezeigt, wenn PrivLines nicht sichtbar ist. Hier keine zweite
-        // Browser-Notification erzeugen, damit keine Duplikate entstehen.
+        // Systemmeldungen kommen immer über den Service Worker. So funktionieren
+        // sie auch bei gesperrtem Bildschirm und werden nicht doppelt angezeigt.
     }
 );
 
@@ -2818,11 +2789,6 @@ socket.on(
             `${data.senderDisplayName || data.senderUsername} möchte dich adden.`
         );
 
-        sendBrowserNotification(
-            "Neue Freundschaftsanfrage",
-            `${data.senderDisplayName || data.senderUsername} möchte dich adden.`
-        );
-
         loadFriendRequests();
     }
 );
@@ -2833,11 +2799,6 @@ socket.on(
     data => {
 
         showNotification(
-            "Freundschaft angenommen",
-            `${data.displayName || data.username} hat deine Anfrage angenommen.`
-        );
-
-        sendBrowserNotification(
             "Freundschaft angenommen",
             `${data.displayName || data.username} hat deine Anfrage angenommen.`
         );
@@ -5718,8 +5679,6 @@ async function start() {
     await loadBlockedUsers();
 
     await loadFriendRequests();
-
-    registerBackgroundPush();
 
     requestPushPermissionFromUserGesture();
 

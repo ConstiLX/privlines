@@ -8,18 +8,8 @@ self.addEventListener("push", event => {
             console.warn("PrivLines: Push-Payload ist kein gültiges JSON.", error);
         }
 
-        // Die sichtbare App zeigt bereits ihre eigene In-App-Meldung bzw. den
-        // Anrufdialog. Verhindert doppelte System-Benachrichtigungen.
-        const windows = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
-        const visibleClient = windows.some(client => {
-            try {
-                return new URL(client.url).origin === self.location.origin && client.visibilityState === "visible";
-            } catch {
-                return false;
-            }
-        });
-        if (visibleClient) return;
-
+        // Systembenachrichtigungen immer anzeigen. Ein sichtbarer Tab bedeutet
+        // nicht, dass die Person den Bildschirm gerade sieht (z. B. Sperrbildschirm).
         const isCall = data.kind === "call";
         const isGroupCall = data.kind === "group-call";
         const call = isCall || isGroupCall;

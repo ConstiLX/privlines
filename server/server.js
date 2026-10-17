@@ -283,6 +283,8 @@ async function pushToUser(userId, mode, payload) {
                 const result = await webPush.sendPush({ ...subscription, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, payload);
                 if ([404, 410].includes(result.status)) {
                     await db.execute("DELETE FROM push_subscriptions WHERE endpoint=?", [subscription.endpoint]);
+                } else if (!result.ok) {
+                    console.warn(`Push-Anbieter hat die Benachrichtigung abgelehnt (HTTP ${result.status || "unbekannt"}).`);
                 }
             } catch (error) {
                 console.warn("Push-Benachrichtigung fehlgeschlagen:", error.message);
@@ -4053,6 +4055,12 @@ async function sendFriendRequestHandler(req, res) {
                             mode
                     }
                 );
+                void pushToUser(receiverId, mode, {
+                    kind: "friend-request",
+                    title: "Neue Freundschaftsanfrage",
+                    body: `${req.user.displayName || req.user.username || "Jemand"} möchte dich als Freund hinzufügen.`,
+                    url: "/chat.html"
+                });
 
                 return res.json({
                     success:
@@ -4197,6 +4205,12 @@ async function sendFriendRequestHandler(req, res) {
                     mode
             }
         );
+        void pushToUser(receiverId, mode, {
+            kind: "friend-request",
+            title: "Neue Freundschaftsanfrage",
+            body: `${senderDisplayName || req.user.username || "Jemand"} möchte dich als Freund hinzufügen.`,
+            url: "/chat.html"
+        });
 
         return res.json({
             success:
@@ -4476,6 +4490,12 @@ app.post(
                         chatId
                 }
             );
+            void pushToUser(request.sender_id, mode, {
+                kind: "friend-request-accepted",
+                title: "Freundschaft angenommen",
+                body: `${acceptedReceiver.displayName || acceptedReceiver.username || "Jemand"} hat deine Anfrage angenommen.`,
+                url: "/chat.html"
+            });
 
             io.to(
                 `user-${request.receiver_id}`
@@ -4501,6 +4521,12 @@ app.post(
                         chatId
                 }
             );
+            void pushToUser(request.receiver_id, mode, {
+                kind: "friend-request-accepted",
+                title: "Freundschaft angenommen",
+                body: `${acceptedSender.displayName || acceptedSender.username || "Jemand"} hat deine Anfrage angenommen.`,
+                url: "/chat.html"
+            });
 
             return res.json({
                 success:
@@ -7204,10 +7230,8 @@ io.on(
                 video: !!data.video,
                 offer: data.offer
             });
-            // Push auch senden, wenn Socket.IO noch verbunden ist: Ein Browser-Tab
-            // kann im Hintergrund sein und dort keine sichtbare Anrufanzeige zeigen.
-            // Der Service Worker unterdrückt Push-Notifications, solange PrivLines
-            // bereits sichtbar ist.
+            // Push auch bei verbundenen Clients senden. Der Service Worker zeigt
+            // den Systemhinweis auch bei gesperrtem Bildschirm an.
             void pushToUser(toUserId, mode, {
                 kind: "call",
                 title: `Anruf von ${displayName}`,
