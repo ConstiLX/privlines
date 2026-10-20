@@ -17,6 +17,8 @@
     let currentCall = null;
     let pendingOffer = null;
     let pendingIceCandidates = [];
+    let pendingLocalIceCandidates = [];
+    let localIceSignalingReady = false;
     const nativeCallParams = new URLSearchParams(window.location.search);
     let nativeCallAction = {
         callId: nativeCallParams.get("nativeCallId"),
@@ -458,6 +460,38 @@
         pendingIceCandidates = [];
     }
 
+    function emitLocalIceCandidate(candidate) {
+        if (!candidate || !currentCall) return;
+        socket.emit("call:ice", {
+            callId: currentCall.callId,
+            toUserId: currentCall.toUserId,
+            candidate
+        });
+    }
+
+    // Signaling can race ICE gathering: queue local candidates until the offer
+    // or answer has been sent, so the receiver knows the call before ICE arrives.
+    function flushLocalIceCandidates() {
+        localIceSignalingReady = true;
+        const queued = pendingLocalIceCandidates;
+        pendingLocalIceCandidates = [];
+        queued.forEach(emitLocalIceCandidate);
+    }
+
+    async function retryRemotePlayback() {
+        const media = currentCall?.video ? $("remoteVideo") : $("remoteAudio");
+        if (!media || !media.srcObject) return;
+        media.muted = false;
+        media.volume = 1;
+        try {
+            await media.play();
+            setCallState("Verbunden");
+        } catch (error) {
+            console.warn("Remote-Audio kann noch nicht abgespielt werden:", error);
+            setCallState("Verbunden – bitte auf 🔊 Ton tippen");
+        }
+    }
+
     async function createPeer(isVideo) {
 
         const pc = new RTCPeerConnection({
@@ -465,66 +499,47 @@
             iceCandidatePoolSize: 10
         });
 
-        pc.onicecandidate =
-            event => {
-
-                if (
-                    !event.candidate ||
-                    !currentCall
-                ) {
-                    return;
-                }
-
-                socket.emit(
-                    "call:ice",
-                    {
-                        callId:
-                            currentCall.callId,
-
-                        toUserId:
-                            currentCall.toUserId,
-
-                        candidate:
-                            event.candidate
-                    }
-                );
-            };
+        pc.onicecandidate = event => {
+            if (!event.candidate || !currentCall) return;
+            if (!localIceSignalingReady) {
+                pendingLocalIceCandidates.push(event.candidate);
+                return;
+            }
+            emitLocalIceCandidate(event.candidate);
+        };
 
         pc.ontrack = event => {
             const stream = event.streams?.[0] || new MediaStream([event.track]);
             const remoteVideo = $("remoteVideo");
             const remoteAudio = $("remoteAudio");
 
-            // Audio-only calls use an actual <audio> element. This avoids
-            // mobile browsers/WebViews silently suppressing sound on a video
-            // element that has no video track.
+            // Attach the remote stream to the correct media element and make
+            // playback retryable from a real user gesture on mobile/WebView.
             if (currentCall?.video && remoteVideo) {
                 remoteVideo.srcObject = stream;
                 remoteVideo.autoplay = true;
                 remoteVideo.playsInline = true;
                 remoteVideo.muted = false;
-                remoteAudio?.pause();
+                remoteVideo.volume = 1;
                 if (remoteAudio) remoteAudio.srcObject = null;
-                const playback = remoteVideo.play();
-                if (playback?.catch) playback.catch(error => {
-                    console.warn("Remote-Video/Audio konnte nicht automatisch starten:", error);
-                    setCallState("Verbunden – Medienwiedergabe wurde blockiert");
-                });
+                void retryRemotePlayback();
             } else if (remoteAudio) {
                 remoteAudio.srcObject = stream;
                 remoteAudio.autoplay = true;
                 remoteAudio.playsInline = true;
                 remoteAudio.muted = false;
+                remoteAudio.volume = 1;
                 if (remoteVideo) {
                     remoteVideo.muted = true;
                     remoteVideo.srcObject = null;
                 }
-                const playback = remoteAudio.play();
-                if (playback?.catch) playback.catch(error => {
-                    console.warn("Remote-Ton konnte nicht automatisch starten:", error);
-                    setCallState("Verbunden – tippe erneut auf Annehmen, falls kein Ton kommt");
-                });
+                void retryRemotePlayback();
             }
+
+            event.track.onended = () => {
+                console.warn("Remote-Medientrack beendet:", event.track.kind);
+            };
+            console.log("Remote-Medientrack empfangen:", event.track.kind, event.track.readyState);
         };
 
         pc.onconnectionstatechange =
@@ -535,24 +550,18 @@
                     pc.connectionState
                 );
 
-                if (
-                    pc.connectionState ===
-                    "connected"
-                ) {
-
-                    setCallState(
-                        "Verbunden"
-                    );
-                }
-
-                if (
-                    pc.connectionState ===
-                        "failed" ||
-                    pc.connectionState ===
-                        "closed"
-                ) {
-
+                if (pc.connectionState === "connected") {
+                    setCallState("Verbunden");
+                } else if (pc.connectionState === "connecting") {
+                    setCallState("Verbindung wird aufgebaut…");
+                } else if (pc.connectionState === "disconnected") {
+                    setCallState("Verbindung unterbrochen – versuche erneut…");
+                } else if (pc.connectionState === "failed") {
+                    setCallState("Verbindung fehlgeschlagen. TURN-Server prüfen.");
+                    showDeviceError("Anrufverbindung fehlgeschlagen", "Die Geräte konnten keine direkte Medienverbindung herstellen. Prüfe die TURN-Server-Konfiguration und versuche es erneut.");
                     finishCall(false);
+                } else if (pc.connectionState === "closed") {
+                    if (currentCall) finishCall(false);
                 }
             };
 
@@ -634,15 +643,17 @@
             );
         }
 
-        localStream
-            .getTracks()
-            .forEach(track => {
+        const microphoneTracks = localStream.getAudioTracks();
+        if (!microphoneTracks.length) {
+            localStream.getTracks().forEach(track => track.stop());
+            localStream = null;
+            throw new Error("Kein Mikrofon-Audiotrack verfügbar. Bitte Mikrofonberechtigung und Geräteeinstellungen prüfen.");
+        }
+        microphoneTracks.forEach(track => { track.enabled = true; });
 
-                pc.addTrack(
-                    track,
-                    localStream
-                );
-            });
+        localStream.getTracks().forEach(track => {
+            pc.addTrack(track, localStream);
+        });
 
         const local =
             $("localVideo");
@@ -724,6 +735,8 @@
         currentCall = null;
         pendingOffer = null;
         pendingIceCandidates = [];
+        pendingLocalIceCandidates = [];
+        localIceSignalingReady = false;
 
         hideOverlay();
 
@@ -795,6 +808,8 @@
         );
 
         pendingIceCandidates = [];
+        pendingLocalIceCandidates = [];
+        localIceSignalingReady = false;
 
         const username =
             window.currentPartner.username ||
@@ -851,6 +866,7 @@
                     offer
                 }
             );
+            flushLocalIceCandidates();
 
             setCallState(
                 "Klingelt..."
@@ -989,17 +1005,16 @@
                     answer
                 }
             );
+            flushLocalIceCandidates();
 
             pendingOffer = null;
 
-            setCallState(
-                "Verbunden"
-            );
+            setCallState("Verbindung wird aufgebaut…");
             publishContactCallActivity(currentCall.toUserId, "📞 Anruf läuft");
 
-            // Das Overlay nicht ausblenden: Es enthält die Steuerung
-            // zum Stummschalten und Beenden des laufenden Anrufs.
-            showOverlay();
+            // Nach Annahme das Klingel-Overlay ausblenden; die Mikrofon- und
+            // Auflegen-Steuerung liegt in der aktiven Anrufansicht.
+            hideOverlay();
 
             console.log(
                 "📞 Anruf angenommen."
@@ -1102,6 +1117,8 @@
                 data.offer;
 
             pendingIceCandidates = [];
+            pendingLocalIceCandidates = [];
+            localIceSignalingReady = false;
 
             setCallName(
                 data.fromUsername
@@ -1179,12 +1196,10 @@
 
                 await addPendingIceCandidates();
 
-                setCallState(
-                    "Verbunden"
-                );
+                setCallState("Verbindung wird aufgebaut…");
 
-                // The overlay sits above the in-call control bar, so hide the
-                // ringing card once the call is established.
+                // The ringing overlay covers the in-call controls; hide it so
+                // the microphone and hang-up buttons are immediately visible.
                 hideOverlay();
 
                 console.log(
@@ -1442,6 +1457,10 @@
                 );
         }
     );
+
+    $("enableCallSoundButton")?.addEventListener("click", async () => {
+        await retryRemotePlayback();
+    });
 
     /* ======================================================
        KAMERA
