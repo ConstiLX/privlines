@@ -45,6 +45,12 @@ const searchButton =
 const searchResult =
     document.getElementById("searchResult");
 
+const searchTabButton =
+    document.getElementById("searchTabButton");
+
+const allUsersTabButton =
+    document.getElementById("allUsersTabButton");
+
 const requestsList =
     document.getElementById("requestsList");
 
@@ -120,25 +126,6 @@ const sidebar =
 const mobileBackButton =
     document.getElementById("mobileBackButton");
 
-function syncChatViewport() {
-    const viewport = window.visualViewport;
-    const height = viewport?.height || window.innerHeight;
-    const top = Math.max(0, viewport?.offsetTop || 0);
-    document.documentElement.style.setProperty(
-        "--privlines-viewport-height",
-        `${Math.round(height)}px`
-    );
-    document.documentElement.style.setProperty(
-        "--privlines-viewport-top",
-        `${Math.round(top)}px`
-    );
-}
-
-syncChatViewport();
-window.addEventListener("resize", syncChatViewport);
-window.visualViewport?.addEventListener("resize", syncChatViewport);
-window.visualViewport?.addEventListener("scroll", syncChatViewport);
-
 
 /* ======================================================
    CHAT-MENÜ
@@ -170,35 +157,12 @@ const blockButton =
 let currentUser = null;
 let currentChatId = null;
 let currentPartner = null;
-let chatOpenRequestId = 0;
-let chatIsOpening = false;
-const chatIdByUserId = new Map();
-let chatIndexLoadPromise = null;
 
 window.currentPartner = null;
 
 let friends = [];
 let unreadMessages = {};
-let contactActivity = {};
 let notificationTimer = null;
-
-function setContactActivity(userId, text, kind = "message") {
-    const id = Number(userId);
-    if (!Number.isFinite(id) || id <= 0 || !text) return;
-
-    contactActivity[id] = { text: String(text), kind, updatedAt: Date.now() };
-    renderFriends();
-}
-
-function getMessagePreview(data) {
-    const text = typeof data?.text === "string" ? data.text.trim() : "";
-    if (text) return text;
-    if (data?.messageType === "voice") return "🎙️ Sprachnachricht";
-    if (data?.messageType === "image") return "📷 Bild";
-    if (data?.messageType === "video") return "🎥 Video";
-    if (data?.messageType === "file") return "📎 Datei";
-    return "Neue Nachricht";
-}
 
 
 /* ======================================================
@@ -386,32 +350,6 @@ async function deleteAccount() {
    FREUNDE
    ====================================================== */
 
-async function loadChatIndex() {
-    if (chatIndexLoadPromise) return chatIndexLoadPromise;
-    chatIndexLoadPromise = (async () => {
-        try {
-            const response = await fetch("/api/chats", {
-                credentials: "include",
-                cache: "no-store"
-            });
-            if (!response.ok) return;
-            const data = await readJsonResponse(response);
-            const chats = Array.isArray(data) ? data : Array.isArray(data.chats) ? data.chats : [];
-            chats.forEach(item => {
-                const userId = Number(item.userId ?? item.user_id);
-                const chatId = Number(item.chatId ?? item.id ?? item.chat_id);
-                if (Number.isInteger(userId) && userId > 0 && Number.isInteger(chatId) && chatId > 0) {
-                    chatIdByUserId.set(userId, chatId);
-                }
-            });
-        } catch (error) {
-            // Opening a chat still works through POST /api/chats if prefetch fails.
-            console.warn("Chatliste konnte nicht vorab geladen werden:", error);
-        }
-    })();
-    return chatIndexLoadPromise;
-}
-
 async function loadFriends() {
 
     try {
@@ -431,14 +369,6 @@ async function loadFriends() {
         if (!Array.isArray(friends)) {
             friends = [];
         }
-
-        const nativeUnread = Array.isArray(window.__privLinesNativeUnread)
-            ? window.__privLinesNativeUnread
-            : [];
-        nativeUnread.forEach(userId => {
-            const id = Number(userId);
-            if (Number.isFinite(id) && id > 0) unreadMessages[id] = Math.max(1, unreadMessages[id] || 0);
-        });
 
         renderFriends();
 
@@ -475,19 +405,17 @@ function renderFriends() {
 
         const element =
             document.createElement("div");
-        element.className = "friend";
-        element.setAttribute("role", "button");
-        element.tabIndex = 0;
 
-        const isActiveFriend = Boolean(
-            currentPartner && Number(currentPartner.userId) === Number(friend.userId)
-        );
-        if (isActiveFriend) element.classList.add("active");
-        element.setAttribute("aria-pressed", String(isActiveFriend));
-        element.setAttribute(
-            "aria-label",
-            `Chat mit ${friend.displayName || friend.username || "Kontakt"} öffnen`
-        );
+        element.className = "friend";
+
+        if (
+            currentPartner &&
+            Number(currentPartner.userId) ===
+            Number(friend.userId)
+        ) {
+
+            element.classList.add("active");
+        }
 
         const avatar =
             document.createElement("div");
@@ -516,13 +444,7 @@ function renderFriends() {
             document.createElement("div");
 
         sub.className = "friend-status";
-        const unread = unreadMessages[friend.userId] || 0;
-        const activity = contactActivity[Number(friend.userId)];
-        sub.textContent = activity?.text
-            || (unread > 0
-                ? "Neue Nachricht"
-                : friend.username ? `@${friend.username}` : "Freund");
-        if (activity?.kind === "call") sub.classList.add("friend-status-call");
+        sub.textContent = friend.username ? `@${friend.username}` : "Freund";
 
         info.append(
             name,
@@ -534,10 +456,13 @@ function renderFriends() {
             info
         );
 
+        const unread =
+            unreadMessages[friend.userId] || 0;
+
         if (unread > 0) {
 
             const badge =
-                document.createElement("span");
+                document.createElement("div");
 
             badge.className = "unread-badge";
 
@@ -549,24 +474,16 @@ function renderFriends() {
             element.appendChild(
                 badge
             );
-        } else if (activity?.kind === "call") {
-            const callBadge = document.createElement("span");
-            callBadge.className = "unread-badge contact-call-badge";
-            callBadge.textContent = "☎";
-            callBadge.setAttribute("aria-label", "Anrufaktivität");
-            element.appendChild(callBadge);
         }
 
         /*
          * WICHTIG:
          * openChat() ist jetzt tatsächlich definiert.
          */
-        element.addEventListener("click", () => openChat(friend));
-        element.addEventListener("keydown", event => {
-            if (event.key !== "Enter" && event.key !== " ") return;
-            event.preventDefault();
-            openChat(friend);
-        });
+        element.addEventListener(
+            "click",
+            () => openChat(friend)
+        );
 
         friendsList.appendChild(
             element
@@ -591,9 +508,6 @@ async function openChat(friend) {
         );
         return;
     }
-
-    const openRequestId = ++chatOpenRequestId;
-    chatIsOpening = true;
 
     /*
      * Alten Chat verlassen
@@ -629,10 +543,7 @@ async function openChat(friend) {
     window.currentPartner =
         currentPartner;
 
-    unreadMessages[friend.userId] = 0;
-    window.PrivLinesNative?.clearUnreadForContact?.(String(friend.userId));
     currentChatId = null;
-    window.PrivLinesNative?.setActiveChatId?.("");
 
     /*
      * Aktiven Freund markieren
@@ -689,31 +600,214 @@ async function openChat(friend) {
     /*
      * Ungelesene Nachrichten zurücksetzen
      */
+    unreadMessages[friend.userId] = 0;
+
     try {
 
-        // Der Server prüft die Freundschaft und liefert die kanonische Chat-ID.
-        // Eine lokale Suche über eine eventuell veraltete Chatliste kann falsche IDs zuordnen.
-        let resolvedChatId = chatIdByUserId.get(Number(friend.userId));
-        if (!resolvedChatId) {
-            const response = await fetch("/api/chats", {
-                method: "POST",
-                credentials: "include",
-                cache: "no-store",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ userId: Number(friend.userId) })
-            });
-            const chatData = await readJsonResponse(response);
-            if (openRequestId !== chatOpenRequestId) return;
-            if (!response.ok) throw new Error(chatData.error || "Chat konnte nicht geöffnet werden.");
+        /*
+         * --------------------------------------------------
+         * CHATS LADEN
+         * --------------------------------------------------
+         */
 
-            resolvedChatId = Number(chatData.chatId ?? chatData.id ?? chatData.chat_id);
-            if (!Number.isInteger(resolvedChatId) || resolvedChatId <= 0) {
-                throw new Error("Der Server hat keine gültige Chat-ID geliefert.");
-            }
-            chatIdByUserId.set(Number(friend.userId), resolvedChatId);
+        const response =
+            await fetch(
+                "/api/chats",
+                {
+                    credentials: "include",
+                    cache: "no-store"
+                }
+            );
+
+        const chats =
+            await readJsonResponse(response);
+
+        if (!response.ok) {
+
+            throw new Error(
+                chats.error ||
+                "Chats konnten nicht geladen werden."
+            );
         }
-        currentChatId = resolvedChatId;
-        window.PrivLinesNative?.setActiveChatId?.(String(currentChatId));
+
+        const chatList =
+            Array.isArray(chats)
+                ? chats
+                : Array.isArray(chats.chats)
+                    ? chats.chats
+                    : [];
+
+        /*
+         * --------------------------------------------------
+         * EXISTIERENDEN CHAT SUCHEN
+         *
+         * Unterstützt mehrere mögliche Feldnamen,
+         * damit die Funktion nicht unnötig von der
+         * genauen Server-Antwort abhängig ist.
+         * --------------------------------------------------
+         */
+
+        const friendId =
+            Number(friend.userId);
+
+        let existingChat = null;
+
+        for (const chatItem of chatList) {
+
+            if (!chatItem) {
+                continue;
+            }
+
+            const possibleIds = [
+
+                chatItem.userId,
+                chatItem.partnerId,
+                chatItem.otherUserId,
+                chatItem.friendId,
+                chatItem.user_id,
+                chatItem.partner_id,
+                chatItem.other_user_id,
+                chatItem.friend_id,
+                chatItem.receiver_id,
+                chatItem.sender_id
+
+            ];
+
+            const found =
+                possibleIds.some(
+                    id =>
+                        id != null &&
+                        Number(id) === friendId
+                );
+
+            if (found) {
+
+                existingChat =
+                    chatItem;
+
+                break;
+            }
+        }
+
+        /*
+         * --------------------------------------------------
+         * CHAT-ID AUS BESTEHENDEM CHAT
+         * --------------------------------------------------
+         */
+
+        if (existingChat) {
+
+            const possibleChatIds = [
+
+                existingChat.id,
+                existingChat.chatId,
+                existingChat.chat_id
+
+            ];
+
+            for (
+                const possibleId
+                of possibleChatIds
+            ) {
+
+                if (
+                    possibleId != null &&
+                    Number(possibleId) > 0
+                ) {
+
+                    currentChatId =
+                        Number(possibleId);
+
+                    break;
+                }
+            }
+        }
+
+        /*
+         * --------------------------------------------------
+         * FALLS NOCH KEIN CHAT EXISTIERT:
+         * CHAT ERSTELLEN
+         * --------------------------------------------------
+         */
+
+        if (!currentChatId) {
+
+            const createResponse =
+                await fetch(
+                    "/api/chats",
+                    {
+                        method: "POST",
+                        credentials: "include",
+                        headers: {
+                            "Content-Type":
+                                "application/json"
+                        },
+                        body: JSON.stringify({
+                            userId: friendId
+                        })
+                    }
+                );
+
+            const createdChat =
+                await readJsonResponse(
+                    createResponse
+                );
+
+            if (!createResponse.ok) {
+
+                throw new Error(
+                    createdChat.error ||
+                    "Chat konnte nicht erstellt werden."
+                );
+            }
+
+            const possibleChatIds = [
+
+                createdChat.id,
+                createdChat.chatId,
+                createdChat.chat_id
+
+            ];
+
+            for (
+                const possibleId
+                of possibleChatIds
+            ) {
+
+                if (
+                    possibleId != null &&
+                    Number(possibleId) > 0
+                ) {
+
+                    currentChatId =
+                        Number(possibleId);
+
+                    break;
+                }
+            }
+        }
+
+        /*
+         * --------------------------------------------------
+         * GÜLTIGE CHAT-ID PRÜFEN
+         * --------------------------------------------------
+         */
+
+        if (!currentChatId) {
+
+            console.error(
+                "Keine Chat-ID erhalten. Serverantwort:",
+                {
+                    chats: chatList,
+                    existingChat,
+                    friend,
+                }
+            );
+
+            throw new Error(
+                "Keine gültige Chat-ID erhalten."
+            );
+        }
 
         /*
          * --------------------------------------------------
@@ -732,17 +826,25 @@ async function openChat(friend) {
          * --------------------------------------------------
          */
 
-        const blockStatusPromise = loadBlockStatus();
-        const messagesLoaded = await loadMessages(currentChatId);
-        if (openRequestId !== chatOpenRequestId) return;
-        if (!messagesLoaded) throw new Error("Nachrichten konnten nicht geladen werden.");
+        await loadMessages(
+            currentChatId
+        );
 
         /* Live-Update für genau diesen Chat starten. */
         startChatLiveUpdates();
 
         /*
-         * Eingabe freigeben, sobald Nachrichten geladen sind; block status
-         * is secondary metadata and should not delay first interaction.
+         * --------------------------------------------------
+         * BLOCKSTATUS
+         * --------------------------------------------------
+         */
+
+        await loadBlockStatus();
+
+        /*
+         * --------------------------------------------------
+         * EINGABEFELDER AKTIVIEREN
+         * --------------------------------------------------
          */
 
         if (messageInput) {
@@ -760,12 +862,6 @@ async function openChat(friend) {
         if (voiceButton) {
             voiceButton.disabled = false;
         }
-        chatIsOpening = false;
-        void blockStatusPromise.then(() => {
-            if (openRequestId === chatOpenRequestId && currentPartner && Number(currentPartner.userId) === Number(friend.userId)) {
-                updateBlockButton();
-            }
-        });
 
         /*
          * --------------------------------------------------
@@ -807,8 +903,6 @@ async function openChat(friend) {
 
     } catch (error) {
 
-        if (openRequestId !== chatOpenRequestId) return;
-        chatIsOpening = false;
         console.error(
             "❌ Chat konnte nicht geöffnet werden:",
             error
@@ -816,15 +910,6 @@ async function openChat(friend) {
 
         stopChatLiveUpdates();
         currentChatId = null;
-        currentPartner = null;
-        window.currentPartner = null;
-        window.PrivLinesNative?.setActiveChatId?.("");
-        if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
-        setAvatarImage(chatAvatar, null, "?");
-        sidebar?.classList.remove("mobile-hidden");
-        chat?.classList.remove("mobile-visible");
-        document.body.classList.remove("mobile-chat-open");
-        renderFriends();
 
         if (messages) {
 
@@ -1270,24 +1355,155 @@ function setFriendSearchButton(button, status, userId, requestId = null) {
 }
 
 
-let userSearchRequestId = 0;
+function setUserDirectoryTab(tab) {
+    const allUsers = tab === "all";
+    searchTabButton?.classList.toggle("active", !allUsers);
+    allUsersTabButton?.classList.toggle("active", allUsers);
+    searchTabButton?.setAttribute("aria-selected", String(!allUsers));
+    allUsersTabButton?.setAttribute("aria-selected", String(allUsers));
+
+    if (allUsers) {
+        if (usernameInput) usernameInput.value = "";
+        loadAllUsers();
+    } else if (searchResult) {
+        searchResult.innerHTML = "";
+        usernameInput?.focus();
+    }
+}
+
+function getUserDirectoryEndpoint() {
+    return currentUser?.mode === "school"
+        ? "/api/school-users"
+        : "/api/users";
+}
+
+function createAllUserCard(user) {
+    const card = document.createElement("div");
+    card.className = "all-user-card";
+
+    const avatar = document.createElement("div");
+    avatar.className = "all-user-avatar";
+    const displayName = user.displayName || user.username || "?";
+
+    if (user.profilePicture) {
+        const img = document.createElement("img");
+        img.src = user.profilePicture;
+        img.alt = "";
+        img.loading = "lazy";
+        avatar.appendChild(img);
+    } else {
+        avatar.textContent = displayName.charAt(0).toUpperCase();
+    }
+
+    const info = document.createElement("div");
+    info.className = "all-user-info";
+
+    const name = document.createElement("div");
+    name.className = "all-user-name";
+    name.textContent = displayName;
+
+    const username = document.createElement("div");
+    username.className = "all-user-username";
+    username.textContent = user.username ? `@${user.username}` : "";
+
+    info.append(name, username);
+
+    const action = document.createElement("div");
+    action.className = "all-user-action";
+
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = "…";
+    button.title = "Freundschaftsstatus wird geladen";
+    button.setAttribute("aria-label", button.title);
+    button.disabled = true;
+
+    action.appendChild(button);
+    card.append(avatar, info, action);
+
+    const userId = user.userId ?? user.id;
+    if (userId) {
+        getFriendshipStatus(userId)
+            .then(friendship => {
+                setFriendSearchButton(
+                    button,
+                    friendship.status,
+                    userId,
+                    friendship.requestId
+                );
+            })
+            .catch(error => {
+                console.error("Freundschaftsstatus-Fehler:", error);
+                button.disabled = true;
+                button.textContent = "Nicht verfügbar";
+            });
+    }
+
+    return card;
+}
+
+async function loadAllUsers() {
+    if (!searchResult) return;
+
+    searchResult.innerHTML = `
+        <div class="all-users-loading">👥 Nutzer werden geladen …</div>
+    `;
+
+    try {
+        const response = await fetch(getUserDirectoryEndpoint(), {
+            credentials: "include",
+            cache: "no-store"
+        });
+        const data = await readJsonResponse(response);
+
+        if (!response.ok) {
+            searchResult.innerHTML = `
+                <div class="search-error">
+                    ${escapeHtml(data.error || "Nutzer konnten nicht geladen werden.")}
+                </div>
+            `;
+            return;
+        }
+
+        const users = Array.isArray(data.users) ? data.users : [];
+
+        if (users.length === 0) {
+            searchResult.innerHTML = `
+                <div class="all-users-empty">Keine Nutzer in deiner Altersgruppe gefunden.</div>
+            `;
+            return;
+        }
+
+        const list = document.createElement("div");
+        list.className = "all-users-list";
+        users.forEach(user => list.appendChild(createAllUserCard(user)));
+
+        searchResult.replaceChildren(list);
+    } catch (error) {
+        console.error("Alle-Nutzer-Ladefehler:", error);
+        searchResult.innerHTML = `
+            <div class="search-error">
+                ${escapeHtml(error.message || "Nutzer konnten nicht geladen werden.")}
+            </div>
+        `;
+    }
+}
+
 
 async function searchUser() {
 
     if (!usernameInput || !searchResult) return;
 
     const username = usernameInput.value.trim();
-    const requestId = ++userSearchRequestId;
-    if (searchButton) searchButton.disabled = true;
 
     if (!username) {
-        searchButton && (searchButton.disabled = false);
-        searchResult.innerHTML = `<div class="search-error" role="status">Bitte einen Benutzernamen eingeben.</div>`;
-        usernameInput.focus();
+        searchResult.innerHTML = `
+            <div class="search-error">
+                Bitte einen Benutzernamen eingeben.
+            </div>
+        `;
         return;
     }
-
-    searchResult.innerHTML = `<div class="search-loading" role="status">Suche läuft …</div>`;
 
     try {
         const isSchoolMode = currentUser && currentUser.mode === "school";
@@ -1307,7 +1523,6 @@ async function searchUser() {
         });
 
         const data = await readJsonResponse(response);
-        if (requestId !== userSearchRequestId) return;
 
         if (!response.ok) {
             searchResult.innerHTML = `
@@ -1389,7 +1604,6 @@ async function searchUser() {
         );
 
     } catch (error) {
-        if (requestId !== userSearchRequestId) return;
         console.error("Benutzersuche-Fehler:", error);
         searchResult.innerHTML = `
             <div class="search-error">
@@ -1400,8 +1614,6 @@ async function searchUser() {
             "Suche",
             error.message || "Bei der Benutzersuche ist ein Fehler aufgetreten."
         );
-    } finally {
-        if (requestId === userSearchRequestId && searchButton) searchButton.disabled = false;
     }
 }
 
@@ -1470,8 +1682,8 @@ async function loadBlockStatus() {
 
     try {
 
-        const targetPartner = currentPartner;
-        const partnerId = Number(targetPartner.userId);
+        const partnerId =
+            Number(currentPartner.userId);
 
         const response =
             await fetch(
@@ -1488,10 +1700,15 @@ async function loadBlockStatus() {
             return;
         }
 
-        if (!currentPartner || Number(currentPartner.userId) !== partnerId) return;
-        currentPartner.blockedByMe = Boolean(data.blockedByMe);
-        currentPartner.blockedByOther = Boolean(data.blockedByOther);
-        window.currentPartner = currentPartner;
+        currentPartner.blockedByMe =
+            Boolean(data.blockedByMe);
+
+        currentPartner.blockedByOther =
+            Boolean(data.blockedByOther);
+
+        window.currentPartner =
+            currentPartner;
+
         updateBlockButton();
 
     } catch (error) {
@@ -1559,7 +1776,7 @@ async function loadMessages(
 ) {
 
     if (!messages) {
-        return false;
+        return;
     }
 
     try {
@@ -1587,7 +1804,6 @@ async function loadMessages(
 
         const oldMessages =
             await readJsonResponse(response);
-        if (Number(currentChatId) !== Number(chatId)) return false;
 
         const messageList =
             Array.isArray(oldMessages)
@@ -1611,7 +1827,7 @@ async function loadMessages(
                 </div>
             `;
 
-            return true;
+            return;
         }
 
         messageList.forEach(
@@ -1649,7 +1865,6 @@ async function loadMessages(
 
         messages.scrollTop =
             messages.scrollHeight;
-        return true;
 
     } catch (error) {
 
@@ -1663,8 +1878,11 @@ async function loadMessages(
             </div>
         `;
 
-        console.warn("Nachrichten konnten nicht geladen werden:", error.message || error);
-        return false;
+        showNotification(
+            "Nachrichten",
+            error.message ||
+            "Nachrichten konnten nicht geladen werden."
+        );
     }
 }
 
@@ -1749,7 +1967,6 @@ async function refreshCurrentChatEverySecond() {
 
     if (
         chatLiveUpdateBusy ||
-        socket.connected ||
         !currentChatId ||
         !currentUser ||
         !messages
@@ -1813,16 +2030,20 @@ function startChatLiveUpdates() {
 
     if (chatLiveUpdateTimer) {
         clearInterval(chatLiveUpdateTimer);
-        chatLiveUpdateTimer = null;
     }
 
-    // Bei aktiver Socket-Verbindung werden Nachrichten direkt zugestellt.
-    // Das Polling bleibt nur als sparsamer Fallback bei Verbindungsabbruch.
-    if (!currentChatId || socket.connected) return;
-
+    /* Sofort einmal prüfen und danach jede Sekunde. */
     refreshCurrentChatEverySecond();
-    chatLiveUpdateTimer = setInterval(refreshCurrentChatEverySecond, 5000);
-    console.log("🔄 Chat-Fallback aktiv (Socket getrennt).");
+
+    chatLiveUpdateTimer =
+        setInterval(
+            refreshCurrentChatEverySecond,
+            1000
+        );
+
+    console.log(
+        "🔄 Privater Chat-Live-Update gestartet."
+    );
 }
 
 function stopChatLiveUpdates() {
@@ -1832,7 +2053,7 @@ function stopChatLiveUpdates() {
         chatLiveUpdateTimer = null;
     }
 
-    // Laufende Requests behalten den Busy-Lock bis zum finally-Block.
+    chatLiveUpdateBusy = false;
     chatLiveUpdateSignature = "";
 }
 
@@ -2403,15 +2624,6 @@ photoInput?.addEventListener(
     }
 );
 
-window.privLinesSyncNativeUnread = senderIds => {
-    window.__privLinesNativeUnread = Array.isArray(senderIds) ? senderIds : [];
-    window.__privLinesNativeUnread.forEach(userId => {
-        const id = Number(userId);
-        if (Number.isFinite(id) && id > 0) unreadMessages[id] = Math.max(1, unreadMessages[id] || 0);
-    });
-    renderFriends();
-};
-
 
 /* ======================================================
    SOCKET: NEUE NACHRICHT
@@ -2427,12 +2639,6 @@ socket.on(
         ) {
             return;
         }
-
-        const senderId = Number(data.senderId);
-        const contactId = currentUser && senderId === Number(currentUser.userId)
-            ? currentPartner?.userId
-            : senderId;
-        setContactActivity(contactId, getMessagePreview(data), "message");
 
         addMessage(
             data.displayName || data.username,
@@ -2454,6 +2660,40 @@ socket.on(
 );
 
 
+/* ======================================================
+   BROWSER-BENACHRICHTIGUNGEN
+   ====================================================== */
+
+function sendBrowserNotification(title, text) {
+    try {
+        if (typeof window === "undefined" || !("Notification" in window)) {
+            return;
+        }
+
+        if (Notification.permission !== "granted") {
+            return;
+        }
+
+        const notification = new Notification(
+            String(title || "PrivLines"),
+            {
+                body: String(text || ""),
+                icon: "/logo6.png",
+                tag: "privlines-notification"
+            }
+        );
+
+        notification.onclick = () => {
+            try {
+                window.focus();
+            } catch {}
+            notification.close();
+        };
+    } catch (error) {
+        console.warn("Browser-Benachrichtigung konnte nicht angezeigt werden:", error);
+    }
+}
+
 async function requestNotificationPermission() {
     try {
         if (typeof window === "undefined" || !("Notification" in window)) {
@@ -2472,17 +2712,13 @@ async function requestNotificationPermission() {
 }
 
 async function registerBackgroundPush() {
-    if (window.PrivLinesNative) return;
     if (!window.isSecureContext || !("serviceWorker" in navigator) || !("PushManager" in window)) return;
     try {
         if (Notification.permission !== "granted") return;
 
-        const registration = await navigator.serviceWorker.register("/service-worker.js", { updateViaCache: "none" });
+        const registration = await navigator.serviceWorker.register("/service-worker.js");
         const keyResponse = await fetch("/api/push/public-key", { credentials: "include", cache: "no-store" });
-        if (!keyResponse.ok) {
-            console.warn(`Push-Schlüssel konnten nicht geladen werden (HTTP ${keyResponse.status}).`);
-            return;
-        }
+        if (!keyResponse.ok) return;
         const { publicKey } = await keyResponse.json();
         if (!publicKey) return;
 
@@ -2499,52 +2735,24 @@ async function registerBackgroundPush() {
             });
         }
 
-        const subscribeResponse = await fetch("/api/push/subscribe", {
+        await fetch("/api/push/subscribe", {
             method: "POST",
             credentials: "include",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ subscription: subscription.toJSON() })
         });
-        if (!subscribeResponse.ok) {
-            throw new Error(`Push-Abo konnte nicht gespeichert werden (HTTP ${subscribeResponse.status}).`);
-        }
     } catch (error) {
         console.warn("Hintergrund-Benachrichtigungen konnten nicht eingerichtet werden:", error);
     }
 }
 
-window.privLinesRegisterAndroidPushToken = async function (token) {
-    if (!window.PrivLinesNative || typeof token !== "string" || !token.trim()) return;
-    try {
-        await fetch("/api/push/android/subscribe", {
-            method: "POST",
-            credentials: "include",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ token: token.trim() })
-        });
-    } catch (error) {
-        console.warn("Android-Push konnte nicht registriert werden:", error);
-    }
-};
-
 function requestPushPermissionFromUserGesture() {
-    if (window.PrivLinesNative) return;
-    if (!("Notification" in window)) return;
-
-    // Wenn die Berechtigung schon erteilt wurde, das Push-Abo trotzdem
-    // bei jedem Login aktualisieren bzw. erneut beim Server registrieren.
-    if (Notification.permission === "granted") {
-        void registerBackgroundPush();
-        return;
-    }
-
-    if (Notification.permission !== "default") return;
-
+    if (!("Notification" in window) || Notification.permission !== "default") return;
     const enable = async () => {
         window.removeEventListener("pointerdown", enable);
         window.removeEventListener("keydown", enable);
         if (await requestNotificationPermission() === "granted") {
-            await registerBackgroundPush();
+            registerBackgroundPush();
         }
     };
     window.addEventListener("pointerdown", enable, { once: true });
@@ -2560,18 +2768,15 @@ socket.on(
     "newMessageNotification",
     data => {
 
-        if (!data || !Number.isFinite(Number(data.chatId))) return;
-        const senderId = Number(data.senderId);
-        if (currentUser && senderId === Number(currentUser.userId)) return;
+        if (
+            Number(data.chatId) ===
+            Number(currentChatId)
+        ) {
+            return;
+        }
 
-        setContactActivity(senderId, getMessagePreview(data), "message");
-
-        const viewingSelectedChat = window.innerWidth > 650
-            || chat?.classList.contains("mobile-visible");
-        if (viewingSelectedChat && Number(data.chatId) === Number(currentChatId)) return;
-
-        if (document.visibilityState === "visible" && document.hasFocus()
-            && currentPartner && senderId === Number(currentPartner.userId)) return;
+        const senderId =
+            Number(data.senderId);
 
         unreadMessages[senderId] =
             (unreadMessages[senderId] || 0) + 1;
@@ -2583,42 +2788,12 @@ socket.on(
             data.text
         );
 
-        // Systemmeldungen kommen immer über den Service Worker. So funktionieren
-        // sie auch bei gesperrtem Bildschirm und werden nicht doppelt angezeigt.
+        sendBrowserNotification(
+            data.senderDisplayName || data.senderUsername,
+            data.text
+        );
     }
 );
-
-socket.on("call:incoming", data => {
-    if (!data) return;
-    setContactActivity(
-        data.fromUserId,
-        data.video ? "📹 Eingehender Videoanruf" : "📞 Eingehender Anruf",
-        "call"
-    );
-});
-
-socket.on("call:answer", data => {
-    if (!data) return;
-    setContactActivity(data.fromUserId, "📞 Anruf läuft", "call");
-});
-
-socket.on("call:rejected", data => {
-    if (!data) return;
-    const label = data.reason === "busy"
-        ? "📞 Anruf: Kontakt besetzt"
-        : "📞 Anruf abgelehnt";
-    setContactActivity(data.fromUserId, label, "call");
-});
-
-socket.on("call:ended", data => {
-    if (!data) return;
-    setContactActivity(data.fromUserId, "📞 Anruf beendet", "call");
-});
-
-window.addEventListener("privlines:call-activity", event => {
-    const activity = event.detail;
-    if (activity) setContactActivity(activity.userId, activity.text, "call");
-});
 
 
 /* ======================================================
@@ -2634,6 +2809,11 @@ socket.on(
             `${data.senderDisplayName || data.senderUsername} möchte dich adden.`
         );
 
+        sendBrowserNotification(
+            "Neue Freundschaftsanfrage",
+            `${data.senderDisplayName || data.senderUsername} möchte dich adden.`
+        );
+
         loadFriendRequests();
     }
 );
@@ -2644,6 +2824,11 @@ socket.on(
     data => {
 
         showNotification(
+            "Freundschaft angenommen",
+            `${data.displayName || data.username} hat deine Anfrage angenommen.`
+        );
+
+        sendBrowserNotification(
             "Freundschaft angenommen",
             `${data.displayName || data.username} hat deine Anfrage angenommen.`
         );
@@ -2666,11 +2851,6 @@ socket.on(
             socket.id
         );
 
-        if (currentChatId) {
-            socket.emit("joinChat", Number(currentChatId));
-            stopChatLiveUpdates();
-        }
-
         if (status) {
 
             status.textContent =
@@ -2686,8 +2866,6 @@ socket.on(
 socket.on(
     "disconnect",
     () => {
-
-        if (currentChatId) startChatLiveUpdates();
 
         if (status) {
 
@@ -4282,7 +4460,6 @@ unfriendButton?.addEventListener(
             stopChatLiveUpdates();
             currentChatId = null;
             currentPartner = null;
-            window.PrivLinesNative?.setActiveChatId?.("");
 
             window.currentPartner =
                 null;
@@ -4713,7 +4890,6 @@ socket.on(
             stopChatLiveUpdates();
             currentChatId = null;
             currentPartner = null;
-            window.PrivLinesNative?.setActiveChatId?.("");
 
             window.currentPartner =
                 null;
@@ -4766,33 +4942,6 @@ mobileBackButton?.addEventListener(
 
         event.preventDefault();
 
-        // Back cancelt einen Chat, dessen Serverantwort noch aussteht.
-        if (chatIsOpening) {
-            chatOpenRequestId += 1;
-            chatIsOpening = false;
-            if (currentChatId) socket.emit("leaveChat", Number(currentChatId));
-            stopChatLiveUpdates();
-            currentChatId = null;
-            currentPartner = null;
-            window.currentPartner = null;
-            window.PrivLinesNative?.setActiveChatId?.("");
-            if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
-            setAvatarImage(chatAvatar, null, "?");
-            if (messages) messages.innerHTML = '<div class="empty-chat">Wähle einen Freund aus, um zu chatten.</div>';
-            if (messageInput) messageInput.disabled = true;
-            if (sendButton) sendButton.disabled = true;
-            if (photoButton) photoButton.disabled = true;
-            if (voiceButton) voiceButton.disabled = true;
-            renderFriends();
-        } else if (currentChatId) {
-            socket.emit("leaveChat", Number(currentChatId));
-            stopChatLiveUpdates();
-            currentChatId = null;
-            currentPartner = null;
-            window.currentPartner = null;
-            window.PrivLinesNative?.setActiveChatId?.("");
-            renderFriends();
-        }
 
         chat?.classList.remove(
             "mobile-visible"
@@ -5427,11 +5576,22 @@ deleteAccountButton?.addEventListener("click", deleteAccount);
 searchButton?.addEventListener(
     "click",
     () => {
+        setUserDirectoryTab("search");
         searchUser();
     }
 );
 
 
+searchTabButton?.addEventListener(
+    "click",
+    () => setUserDirectoryTab("search")
+);
+
+
+allUsersTabButton?.addEventListener(
+    "click",
+    () => setUserDirectoryTab("all")
+);
 
 
 usernameInput?.addEventListener(
@@ -5443,6 +5603,8 @@ usernameInput?.addEventListener(
         ) {
 
             event.preventDefault();
+
+            setUserDirectoryTab("search");
             searchUser();
         }
     }
@@ -5532,16 +5694,6 @@ window.addEventListener("pageshow", () => {
    ====================================================== */
 
 async function start() {
-    window.PrivLinesNative?.setActiveChatId?.("");
-
-    // Nach Reloads oder zurückgekehrten PWA-Tabs darf kein veralteter
-    // mobiler Chat-Screen die Kontaktliste verdecken.
-    if (window.innerWidth <= 650 && !currentPartner) {
-        sidebar?.classList.remove("mobile-hidden");
-        chat?.classList.remove("mobile-visible");
-        document.body.classList.remove("mobile-chat-open");
-    }
-    notification?.classList.remove("show");
 
     const loggedIn =
         await loadCurrentUser();
@@ -5550,7 +5702,6 @@ async function start() {
         return;
     }
 
-    void loadChatIndex();
     await loadFriends();
 
     await loadGroups();
@@ -5558,6 +5709,8 @@ async function start() {
     await loadBlockedUsers();
 
     await loadFriendRequests();
+
+    registerBackgroundPush();
 
     requestPushPermissionFromUserGesture();
 
