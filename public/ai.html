@@ -1097,50 +1097,15 @@
                 .toLowerCase()
                 .trim();
 
+        // User instructions often use the short imperative “Erstell” instead
+        // of “Erstelle”. Detect the action and image subject independently so
+        // those valid image requests reach /api/ai/image instead of text AI.
+        const asksToCreate =
+            /\b(erst(e|ell|elle|ellt|ellen)|generier(e|en|t)?|mach(e|en|t)?|zeichn(e|en|et)?|mal(e|en|t)?|erzeug(e|en|t)?|render(e|n|t)?)\b/.test(t);
+        const imageSubject =
+            /\b(bild(er)?|grafik(en)?|logo(s)?|wallpaper(s)?|hintergrund(bild)?|portrait(s)?|porträt(s)?|illustration(en)?|anime|foto(s)?)\b/.test(t);
 
-        const keywords = [
-
-            "erstelle ein bild",
-            "erstelle mir ein bild",
-            "generiere ein bild",
-            "generiere mir ein bild",
-            "mach ein bild",
-            "mach mir ein bild",
-            "zeichne ein bild",
-            "zeichne mir ein bild",
-            "erzeuge ein bild",
-            "erstelle eine grafik",
-            "generiere eine grafik",
-            "generiere ein logo",
-            "erstelle ein logo",
-            "mach ein logo",
-            "mach mir ein logo",
-            "erstelle einen wallpaper",
-            "erstelle ein wallpaper",
-            "generiere ein wallpaper",
-            "generiere einen wallpaper",
-            "erstelle einen hintergrund",
-            "erstelle ein hintergrundbild",
-            "generiere einen hintergrund",
-            "generiere ein hintergrundbild",
-            "erstelle ein portrait",
-            "erstelle ein porträt",
-            "generiere ein portrait",
-            "generiere ein porträt",
-            "zeichne",
-            "male",
-            "render",
-            "generiere ein anime",
-            "erstelle eine illustration",
-            "generiere eine illustration"
-
-        ];
-
-
-        return keywords.some(
-            keyword =>
-                t.includes(keyword)
-        );
+        return asksToCreate && imageSubject;
 
     }
 
