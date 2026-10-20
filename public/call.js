@@ -26,6 +26,12 @@
     let isMuted = false;
     let cameraEnabled = false;
 
+    function publishContactCallActivity(userId, text) {
+        window.dispatchEvent(new CustomEvent("privlines:call-activity", {
+            detail: { userId, text }
+        }));
+    }
+
     /* ======================================================
        DOM
        ====================================================== */
@@ -645,6 +651,10 @@
 
     function finishCall(notify = true) {
 
+        if (currentCall) {
+            publishContactCallActivity(currentCall.toUserId, "📞 Anruf beendet");
+        }
+
         if (
             notify &&
             currentCall
@@ -733,6 +743,10 @@
             video: !!video,
             outgoing: true
         };
+        publishContactCallActivity(
+            toUserId,
+            video ? "📹 Videoanruf wird gestartet" : "📞 Anruf wird gestartet"
+        );
 
         pendingIceCandidates = [];
 
@@ -935,6 +949,7 @@
             setCallState(
                 "Verbunden"
             );
+            publishContactCallActivity(currentCall.toUserId, "📞 Anruf läuft");
 
             hideOverlay();
 
@@ -1030,6 +1045,10 @@
                 outgoing:
                     false
             };
+            publishContactCallActivity(
+                data.fromUserId,
+                data.video ? "📹 Eingehender Videoanruf" : "📞 Eingehender Anruf"
+            );
 
             pendingOffer =
                 data.offer;
@@ -1063,6 +1082,10 @@
                 const action = pendingNativeAction.action;
                 nativeCallAction = { callId: null, action: null };
                 window.__privLinesNativeCallAction = null;
+                const cleanUrl = new URL(window.location.href);
+                cleanUrl.searchParams.delete("nativeCallAction");
+                cleanUrl.searchParams.delete("nativeCallId");
+                window.history.replaceState({}, "", cleanUrl);
                 window.PrivLinesNative?.clearIncomingCall?.(data.callId);
                 if (action === "answer") {
                     void acceptCall();

@@ -158,7 +158,26 @@ window.currentPartner = null;
 
 let friends = [];
 let unreadMessages = {};
+let contactActivity = {};
 let notificationTimer = null;
+
+function setContactActivity(userId, text, kind = "message") {
+    const id = Number(userId);
+    if (!Number.isFinite(id) || id <= 0 || !text) return;
+
+    contactActivity[id] = { text: String(text), kind, updatedAt: Date.now() };
+    renderFriends();
+}
+
+function getMessagePreview(data) {
+    const text = typeof data?.text === "string" ? data.text.trim() : "";
+    if (text) return text;
+    if (data?.messageType === "voice") return "🎙️ Sprachnachricht";
+    if (data?.messageType === "image") return "📷 Bild";
+    if (data?.messageType === "video") return "🎥 Video";
+    if (data?.messageType === "file") return "📎 Datei";
+    return "Neue Nachricht";
+}
 
 
 /* ======================================================
@@ -366,6 +385,14 @@ async function loadFriends() {
             friends = [];
         }
 
+        const nativeUnread = Array.isArray(window.__privLinesNativeUnread)
+            ? window.__privLinesNativeUnread
+            : [];
+        nativeUnread.forEach(userId => {
+            const id = Number(userId);
+            if (Number.isFinite(id) && id > 0) unreadMessages[id] = Math.max(1, unreadMessages[id] || 0);
+        });
+
         renderFriends();
 
     } catch (error) {
@@ -442,7 +469,13 @@ function renderFriends() {
             document.createElement("div");
 
         sub.className = "friend-status";
-        sub.textContent = friend.username ? `@${friend.username}` : "Freund";
+        const unread = unreadMessages[friend.userId] || 0;
+        const activity = contactActivity[Number(friend.userId)];
+        sub.textContent = activity?.text
+            || (unread > 0
+                ? "Neue Nachricht"
+                : friend.username ? `@${friend.username}` : "Freund");
+        if (activity?.kind === "call") sub.classList.add("friend-status-call");
 
         info.append(
             name,
@@ -453,9 +486,6 @@ function renderFriends() {
             avatar,
             info
         );
-
-        const unread =
-            unreadMessages[friend.userId] || 0;
 
         if (unread > 0) {
 
@@ -472,6 +502,12 @@ function renderFriends() {
             element.appendChild(
                 badge
             );
+        } else if (activity?.kind === "call") {
+            const callBadge = document.createElement("span");
+            callBadge.className = "unread-badge contact-call-badge";
+            callBadge.textContent = "☎";
+            callBadge.setAttribute("aria-label", "Anrufaktivität");
+            element.appendChild(callBadge);
         }
 
         /*
@@ -546,7 +582,10 @@ async function openChat(friend) {
     window.currentPartner =
         currentPartner;
 
+    unreadMessages[friend.userId] = 0;
+    window.PrivLinesNative?.clearUnreadForContact?.(String(friend.userId));
     currentChatId = null;
+    window.PrivLinesNative?.setActiveChatId?.("");
 
     /*
      * Aktiven Freund markieren
@@ -603,8 +642,6 @@ async function openChat(friend) {
     /*
      * Ungelesene Nachrichten zurücksetzen
      */
-    unreadMessages[friend.userId] = 0;
-
     try {
 
         // Der Server prüft die Freundschaft und liefert die kanonische Chat-ID.
@@ -625,6 +662,7 @@ async function openChat(friend) {
             throw new Error("Der Server hat keine gültige Chat-ID geliefert.");
         }
         currentChatId = resolvedChatId;
+        window.PrivLinesNative?.setActiveChatId?.(String(currentChatId));
 
         /*
          * --------------------------------------------------
@@ -733,6 +771,7 @@ async function openChat(friend) {
         currentChatId = null;
         currentPartner = null;
         window.currentPartner = null;
+        window.PrivLinesNative?.setActiveChatId?.("");
         if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
         setAvatarImage(chatAvatar, null, "?");
         sidebar?.classList.remove("mobile-hidden");
@@ -2322,6 +2361,15 @@ photoInput?.addEventListener(
     }
 );
 
+window.privLinesSyncNativeUnread = senderIds => {
+    window.__privLinesNativeUnread = Array.isArray(senderIds) ? senderIds : [];
+    window.__privLinesNativeUnread.forEach(userId => {
+        const id = Number(userId);
+        if (Number.isFinite(id) && id > 0) unreadMessages[id] = Math.max(1, unreadMessages[id] || 0);
+    });
+    renderFriends();
+};
+
 
 /* ======================================================
    SOCKET: NEUE NACHRICHT
@@ -2337,6 +2385,12 @@ socket.on(
         ) {
             return;
         }
+
+        const senderId = Number(data.senderId);
+        const contactId = currentUser && senderId === Number(currentUser.userId)
+            ? currentPartner?.userId
+            : senderId;
+        setContactActivity(contactId, getMessagePreview(data), "message");
 
         addMessage(
             data.displayName || data.username,
@@ -2465,12 +2519,15 @@ socket.on(
     data => {
 
         if (!data || !Number.isFinite(Number(data.chatId))) return;
+        const senderId = Number(data.senderId);
+        if (currentUser && senderId === Number(currentUser.userId)) return;
+
+        setContactActivity(senderId, getMessagePreview(data), "message");
+
         const viewingSelectedChat = window.innerWidth > 650
             || chat?.classList.contains("mobile-visible");
         if (viewingSelectedChat && Number(data.chatId) === Number(currentChatId)) return;
 
-        const senderId = Number(data.senderId);
-        if (currentUser && senderId === Number(currentUser.userId)) return;
         if (document.visibilityState === "visible" && document.hasFocus()
             && currentPartner && senderId === Number(currentPartner.userId)) return;
 
@@ -2488,6 +2545,38 @@ socket.on(
         // sie auch bei gesperrtem Bildschirm und werden nicht doppelt angezeigt.
     }
 );
+
+socket.on("call:incoming", data => {
+    if (!data) return;
+    setContactActivity(
+        data.fromUserId,
+        data.video ? "📹 Eingehender Videoanruf" : "📞 Eingehender Anruf",
+        "call"
+    );
+});
+
+socket.on("call:answer", data => {
+    if (!data) return;
+    setContactActivity(data.fromUserId, "📞 Anruf läuft", "call");
+});
+
+socket.on("call:rejected", data => {
+    if (!data) return;
+    const label = data.reason === "busy"
+        ? "📞 Anruf: Kontakt besetzt"
+        : "📞 Anruf abgelehnt";
+    setContactActivity(data.fromUserId, label, "call");
+});
+
+socket.on("call:ended", data => {
+    if (!data) return;
+    setContactActivity(data.fromUserId, "📞 Anruf beendet", "call");
+});
+
+window.addEventListener("privlines:call-activity", event => {
+    const activity = event.detail;
+    if (activity) setContactActivity(activity.userId, activity.text, "call");
+});
 
 
 /* ======================================================
@@ -4151,6 +4240,7 @@ unfriendButton?.addEventListener(
             stopChatLiveUpdates();
             currentChatId = null;
             currentPartner = null;
+            window.PrivLinesNative?.setActiveChatId?.("");
 
             window.currentPartner =
                 null;
@@ -4581,6 +4671,7 @@ socket.on(
             stopChatLiveUpdates();
             currentChatId = null;
             currentPartner = null;
+            window.PrivLinesNative?.setActiveChatId?.("");
 
             window.currentPartner =
                 null;
@@ -4642,6 +4733,7 @@ mobileBackButton?.addEventListener(
             currentChatId = null;
             currentPartner = null;
             window.currentPartner = null;
+            window.PrivLinesNative?.setActiveChatId?.("");
             if (chatPartner) chatPartner.textContent = "Kein Chat ausgewählt";
             setAvatarImage(chatAvatar, null, "?");
             if (messages) messages.innerHTML = '<div class="empty-chat">Wähle einen Freund aus, um zu chatten.</div>';
@@ -4649,6 +4741,14 @@ mobileBackButton?.addEventListener(
             if (sendButton) sendButton.disabled = true;
             if (photoButton) photoButton.disabled = true;
             if (voiceButton) voiceButton.disabled = true;
+            renderFriends();
+        } else if (currentChatId) {
+            socket.emit("leaveChat", Number(currentChatId));
+            stopChatLiveUpdates();
+            currentChatId = null;
+            currentPartner = null;
+            window.currentPartner = null;
+            window.PrivLinesNative?.setActiveChatId?.("");
             renderFriends();
         }
 
@@ -5390,6 +5490,7 @@ window.addEventListener("pageshow", () => {
    ====================================================== */
 
 async function start() {
+    window.PrivLinesNative?.setActiveChatId?.("");
 
     // Nach Reloads oder zurückgekehrten PWA-Tabs darf kein veralteter
     // mobiler Chat-Screen die Kontaktliste verdecken.

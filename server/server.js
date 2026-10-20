@@ -1056,6 +1056,7 @@ app.post(
             );
             void pushToUser(receiverId, req.user.mode, {
                 kind: "message",
+                chatId: String(chatId),
                 title: req.user.username || "PrivLines",
                 body: "Du hast eine neue Nachricht in PrivLines.",
                 url: "/chat.html"
@@ -1138,6 +1139,7 @@ app.post("/api/upload/audio", authenticateToken, uploadVoiceMessage.single("audi
         });
         void pushToUser(receiverId, 'standard', {
             kind: "message",
+            chatId: String(chatId),
             title: req.user.displayName || req.user.username || 'PrivLines',
             body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
         });
@@ -6916,6 +6918,9 @@ io.on(
                     );
                     void pushToUser(receiverId, mode, {
                         kind: "message",
+                        chatId: String(chatId),
+                        senderId: String(userId),
+                        senderUsername: username,
                         title: displayName || username || "PrivLines",
                         body: "Du hast eine neue Nachricht in PrivLines.",
                         url: "/chat.html"
@@ -7419,6 +7424,7 @@ io.on(
             void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
                 .catch(error => console.warn("Angenommener Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
             void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
+            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:answer", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7442,6 +7448,7 @@ io.on(
             void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
                 .catch(error => console.warn("Abgelehnter Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
             void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
+            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7455,6 +7462,7 @@ io.on(
             void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
                 .catch(error => console.warn("Besetzt-Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
             void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
+            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7473,6 +7481,7 @@ io.on(
                 fromUserId: userId
             });
             void pushAndroidToUser(toUserId, mode, { kind: "call-ended", callId });
+            void pushToUser(toUserId, mode, { kind: "call-ended", callId });
         });
 
         socket.on("groupCall:invite", async data => {

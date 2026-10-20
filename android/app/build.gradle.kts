@@ -1,11 +1,14 @@
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
-    id("com.google.gms.google-services")
+}
+
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
 }
 
 val privLinesBaseUrl = providers.gradleProperty("PRIVLINES_BASE_URL")
-    .orElse("https://privlines.com")
+    .orElse("https://privlines-u1d7.onrender.com")
     .get()
     .trimEnd('/')
 

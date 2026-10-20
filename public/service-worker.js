@@ -16,22 +16,30 @@ self.addEventListener("push", event => {
             console.warn("PrivLines: Push-Payload ist kein gültiges JSON.", error);
         }
 
+        if (data.kind === "call-ended") {
+            const callTag = `privlines-call-${data.callId || "incoming"}`;
+            const notifications = await self.registration.getNotifications({ tag: callTag });
+            notifications.forEach(notification => notification.close());
+            return;
+        }
+
         // In einem sichtbaren und fokussierten App-Fenster zeigt die Seite
         // selbst ihre Nachricht. Im Hintergrund wird der System-Push gezeigt.
         const clients = await self.clients.matchAll({
             type: "window",
             includeUncontrolled: true
         });
-        const appIsFocused = clients.some(client => {
+        const chatIsFocused = clients.some(client => {
             try {
                 return new URL(client.url).origin === self.location.origin
+                    && new URL(client.url).pathname.endsWith("/chat.html")
                     && client.visibilityState === "visible"
                     && client.focused === true;
             } catch (_) {
                 return false;
             }
         });
-        if (appIsFocused) return;
+        if (chatIsFocused) return;
 
         const isPrivateCall = data.kind === "call";
         const isGroupCall = data.kind === "group-call";

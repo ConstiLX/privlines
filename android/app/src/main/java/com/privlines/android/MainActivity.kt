@@ -15,6 +15,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import com.google.firebase.FirebaseApp
 import com.google.firebase.messaging.FirebaseMessaging
 import org.json.JSONObject
 
@@ -74,6 +75,7 @@ class MainActivity : AppCompatActivity() {
                 override fun onPageFinished(view: WebView, url: String) {
                     super.onPageFinished(view, url)
                     fcmToken?.let(::sendPushTokenToPage)
+                    sendUnreadToPage()
                     sendPendingCallActionToPage()
                 }
             }
@@ -133,11 +135,13 @@ class MainActivity : AppCompatActivity() {
         }
         setContentView(webView)
         requestNotificationPermissionIfNeeded()
-        FirebaseMessaging.getInstance().token
-            .addOnSuccessListener { token ->
-                fcmToken = token
-                sendPushTokenToPage(token)
-            }
+        if (FirebaseApp.getApps(this).isNotEmpty()) {
+            FirebaseMessaging.getInstance().token
+                .addOnSuccessListener { token ->
+                    fcmToken = token
+                    sendPushTokenToPage(token)
+                }
+        }
         loadFromIntent(intent)
     }
 
@@ -145,6 +149,21 @@ class MainActivity : AppCompatActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         loadFromIntent(intent)
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onBackPressed() {
+        if (!::webView.isInitialized) {
+            super.onBackPressed()
+            return
+        }
+        webView.evaluateJavascript(
+            "(function(){var b=document.getElementById('mobileBackButton');if(b&&getComputedStyle(b).display!=='none'){b.click();return true;}var s=document.getElementById('schoolChannelBack');if(s&&getComputedStyle(s).display!=='none'){s.click();return true;}return false;})()"
+        ) { handled ->
+            if (handled != "true") {
+                if (webView.canGoBack()) webView.goBack() else super.onBackPressed()
+            }
+        }
     }
 
     override fun onResume() {
@@ -211,6 +230,14 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    private fun sendUnreadToPage() {
+        if (!::webView.isInitialized) return
+        val unread = getSharedPreferences("privlines_unread", MODE_PRIVATE)
+            .getStringSet("sender_ids", emptySet()).orEmpty()
+        val json = org.json.JSONArray().apply { unread.forEach(::put) }.toString()
+        webView.post { webView.evaluateJavascript("window.privLinesSyncNativeUnread?.($json)", null) }
+    }
+
     private fun sendPendingCallActionToPage() {
         val action = intent?.getStringExtra(CallNotifications.EXTRA_ACTION) ?: return
         val callId = intent?.getStringExtra(CallNotifications.EXTRA_CALL_ID) ?: return
@@ -222,6 +249,20 @@ class MainActivity : AppCompatActivity() {
     }
 
     inner class PrivLinesBridge(private val activity: MainActivity) {
+        @android.webkit.JavascriptInterface
+        fun clearUnreadForContact(userId: String?) {
+            val id = userId?.toLongOrNull()?.toString() ?: return
+            val preferences = getSharedPreferences("privlines_unread", MODE_PRIVATE)
+            val unread = preferences.getStringSet("sender_ids", emptySet()).orEmpty().toMutableSet()
+            unread.remove(id)
+            preferences.edit().putStringSet("sender_ids", unread).apply()
+        }
+
+        @android.webkit.JavascriptInterface
+        fun setActiveChatId(chatId: String?) {
+            PrivLinesActivityState.activeChatId = chatId?.takeIf { it.isNotBlank() }
+        }
+
         @android.webkit.JavascriptInterface
         fun clearIncomingCall(callId: String) {
             if (PrivLinesActivityState.isForeground) {

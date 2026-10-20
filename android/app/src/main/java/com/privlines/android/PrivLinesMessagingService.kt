@@ -38,12 +38,24 @@ class PrivLinesMessagingService : FirebaseMessagingService() {
                         .putExtra(CallNotifications.EXTRA_CALL_ID, callId)
                 )
             }
-            else -> CallNotifications.showMessage(
-                context = this,
-                title = data["title"] ?: "PrivLines",
-                body = data["body"] ?: "Du hast eine neue Benachrichtigung.",
-                notificationKey = data["kind"].orEmpty() + data["url"].orEmpty()
-            )
+            else -> {
+                val chatId = data["chatId"].orEmpty()
+                val isOpenChat = chatId.isNotBlank() && PrivLinesActivityState.isForeground && PrivLinesActivityState.activeChatId == chatId
+                if (!isOpenChat) {
+                    data["senderId"]?.toLongOrNull()?.let { senderId ->
+                        val preferences = getSharedPreferences("privlines_unread", MODE_PRIVATE)
+                        val unread = preferences.getStringSet("sender_ids", emptySet()).orEmpty().toMutableSet()
+                        unread.add(senderId.toString())
+                        preferences.edit().putStringSet("sender_ids", unread).apply()
+                    }
+                    CallNotifications.showMessage(
+                        context = this,
+                        title = data["title"] ?: "PrivLines",
+                        body = data["body"] ?: "Du hast eine neue Benachrichtigung.",
+                        notificationKey = data["kind"].orEmpty() + chatId + data["url"].orEmpty()
+                    )
+                }
+            }
         }
     }
 }
