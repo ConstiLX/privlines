@@ -13,8 +13,6 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const cookieParser = require("cookie-parser");
 const webPush = require("./webPush");
-const fcm = require("./fcm");
-const githubProfileImages = require("./githubProfileImages");
 
 require("dotenv").config();
 
@@ -40,11 +38,6 @@ const io =
 
 const PORT =
     process.env.PORT || 3000;
-const HOST = process.env.HOST || "0.0.0.0";
-const SESSION_DAYS = Math.min(365, Math.max(1, Number.parseInt(process.env.SESSION_DAYS || "90", 10) || 90));
-const SESSION_TTL = `${SESSION_DAYS}d`;
-const SESSION_MAX_AGE = SESSION_DAYS * 24 * 60 * 60 * 1000;
-const COOKIE_SECURE = process.env.COOKIE_SECURE === "true";
 
 
 // =====================================================
@@ -57,28 +50,57 @@ const publicPath =
         "../public"
     );
 
-// Persistente Uploads können über ein Volume außerhalb des App-Deployments
-// eingebunden werden. Ohne Konfiguration bleibt der bisherige lokale Pfad aktiv.
-const uploadsPath = path.resolve(
-    process.env.PRIVLINES_UPLOADS_DIR || path.join(publicPath, "uploads")
-);
-
 const imageUploadPath =
-    path.join(uploadsPath, "images");
+    path.join(
+        publicPath,
+        "uploads",
+        "images"
+    );
 
-const audioUploadPath = path.join(uploadsPath, "audio");
+const audioUploadPath = path.join(publicPath, "uploads", "audio");
 
 const profileUploadPath =
-    path.join(uploadsPath, "profiles");
+    path.join(
+        publicPath,
+        "uploads",
+        "profiles"
+    );
 
 
 // =====================================================
 // UPLOAD-ORDNER
 // =====================================================
 
-for (const uploadDirectory of [imageUploadPath, profileUploadPath, audioUploadPath]) {
-    fs.mkdirSync(uploadDirectory, { recursive: true });
+if (
+    !fs.existsSync(
+        imageUploadPath
+    )
+) {
+
+    fs.mkdirSync(
+        imageUploadPath,
+        {
+            recursive: true
+        }
+    );
 }
+
+if (
+    !fs.existsSync(
+        profileUploadPath
+    )
+) {
+
+    fs.mkdirSync(
+        profileUploadPath,
+        {
+            recursive: true
+        }
+    );
+}
+
+
+if (!fs.existsSync(audioUploadPath)) fs.mkdirSync(audioUploadPath, { recursive: true });
 
 
 // =====================================================
@@ -109,39 +131,6 @@ app.use(
 
 app.use(
     cookieParser()
-);
-
-app.get("/uploads/profiles/:filename", authenticateToken, async (req, res, next) => {
-    if (!githubProfileImages.isConfigured()) return next();
-    const filename = String(req.params.filename || "");
-    if (!/^[A-Za-z0-9._-]{1,200}$/.test(filename)) return res.sendStatus(404);
-
-    const localPath = path.join(profileUploadPath, filename);
-    if (fs.existsSync(localPath)) {
-        return res.sendFile(localPath);
-    }
-
-    try {
-        const image = await githubProfileImages.get(filename);
-        if (!image) return res.sendStatus(404);
-        res.set("Content-Type", image.contentType);
-        res.set("Cache-Control", "private, max-age=3600");
-        res.set("X-Content-Type-Options", "nosniff");
-        return res.send(image.contents);
-    } catch (error) {
-        console.error("Profilbild konnte nicht aus GitHub geladen werden:", error.message);
-        return res.status(502).send("Profilbild ist vorübergehend nicht verfügbar.");
-    }
-});
-
-app.use(
-    "/uploads",
-    express.static(uploadsPath, {
-        dotfiles: "deny",
-        fallthrough: true,
-        maxAge: "30d",
-        immutable: true
-    })
 );
 
 app.use(
@@ -282,44 +271,7 @@ app.delete("/api/push/subscribe", authenticateToken, async (req, res) => {
     }
 });
 
-app.post("/api/push/android/subscribe", authenticateToken, async (req, res) => {
-    try {
-        const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
-        if (!token || token.length > 4096 || /\s/.test(token)) {
-            return res.status(400).json({ error: "Ungültiges Android-Push-Token." });
-        }
-        await db.execute(`
-            INSERT INTO android_push_tokens (token_hash, token, user_id, mode)
-            VALUES (?, ?, ?, ?)
-            ON DUPLICATE KEY UPDATE token=VALUES(token), user_id=VALUES(user_id), mode=VALUES(mode), updated_at=CURRENT_TIMESTAMP
-        `, [crypto.createHash("sha256").update(token).digest("hex"), token, Number(req.user.userId), req.user.mode === "school" ? "school" : "standard"]);
-        return res.json({ success: true });
-    } catch (error) {
-        console.error("Android-Push-Token konnte nicht gespeichert werden:", error.message);
-        return res.status(500).json({ error: "Android-Push-Token konnte nicht gespeichert werden." });
-    }
-});
-
-app.delete("/api/push/android/subscribe", authenticateToken, async (req, res) => {
-    try {
-        const token = typeof req.body?.token === "string" ? req.body.token.trim() : "";
-        if (!token || token.length > 4096) return res.status(400).json({ error: "Ungültiges Android-Push-Token." });
-        await db.execute("DELETE FROM android_push_tokens WHERE token_hash=? AND user_id=? AND mode=?", [
-            crypto.createHash("sha256").update(token).digest("hex"),
-            Number(req.user.userId),
-            req.user.mode === "school" ? "school" : "standard"
-        ]);
-        return res.json({ success: true });
-    } catch (error) {
-        console.error("Android-Push-Token konnte nicht entfernt werden:", error.message);
-        return res.status(500).json({ error: "Android-Push-Token konnte nicht entfernt werden." });
-    }
-});
-
 async function pushToUser(userId, mode, payload) {
-    if (payload?.kind !== "call" && payload?.kind !== "call-ended") {
-        void pushAndroidToUser(userId, mode, payload);
-    }
     if (!webPush.getKeys()) return;
     try {
         const [subscriptions] = await db.execute(
@@ -331,8 +283,6 @@ async function pushToUser(userId, mode, payload) {
                 const result = await webPush.sendPush({ ...subscription, keys: { p256dh: subscription.p256dh, auth: subscription.auth } }, payload);
                 if ([404, 410].includes(result.status)) {
                     await db.execute("DELETE FROM push_subscriptions WHERE endpoint=?", [subscription.endpoint]);
-                } else if (!result.ok) {
-                    console.warn(`Push-Anbieter hat die Benachrichtigung abgelehnt (HTTP ${result.status || "unbekannt"}).`);
                 }
             } catch (error) {
                 console.warn("Push-Benachrichtigung fehlgeschlagen:", error.message);
@@ -340,31 +290,6 @@ async function pushToUser(userId, mode, payload) {
         }));
     } catch (error) {
         console.warn("Push-Abonnements konnten nicht geladen werden:", error.message);
-    }
-}
-
-async function pushAndroidToUser(userId, mode, payload) {
-    if (!fcm.getServiceAccount()) return;
-    try {
-        const [tokens] = await db.execute(
-            "SELECT token_hash AS tokenHash, token FROM android_push_tokens WHERE user_id=? AND mode=?",
-            [Number(userId), mode === "school" ? "school" : "standard"]
-        );
-        await Promise.all(tokens.map(async ({ token, tokenHash }) => {
-            try {
-                const result = await fcm.sendAndroidPush(token, payload);
-                const tokenIsInvalid = result.result?.error?.details?.some(detail => detail.errorCode === "UNREGISTERED");
-                if (tokenIsInvalid) {
-                    await db.execute("DELETE FROM android_push_tokens WHERE token_hash=?", [tokenHash]);
-                } else if (!result.ok) {
-                    console.warn(`Android-Push fehlgeschlagen (HTTP ${result.status || "unbekannt"}).`);
-                }
-            } catch (error) {
-                console.warn("Android-Push konnte nicht gesendet werden:", error.message);
-            }
-        }));
-    } catch (error) {
-        console.warn("Android-Push-Tokens konnten nicht geladen werden:", error.message);
     }
 }
 
@@ -464,12 +389,10 @@ const profileStorage =
         filename:
             (req, file, cb) => {
 
-                const extension = ({
-                    "image/jpeg": ".jpg",
-                    "image/png": ".png",
-                    "image/gif": ".gif",
-                    "image/webp": ".webp"
-                })[file.mimetype] || path.extname(file.originalname).toLowerCase();
+                const extension =
+                    path.extname(
+                        file.originalname
+                    ).toLowerCase();
 
                 const filename =
                     `${Date.now()}-${crypto.randomBytes(8).toString("hex")}${extension}`;
@@ -715,14 +638,6 @@ app.post(
                 });
             }
 
-            if (githubProfileImages.isConfigured()) {
-                await githubProfileImages.upload(
-                    req.file.filename,
-                    fs.readFileSync(req.file.path),
-                    "Store PrivLines profile image"
-                );
-            }
-
             const oldPicture =
                 users[0].profile_picture;
 
@@ -745,18 +660,15 @@ app.post(
                 )
             ) {
 
-                if (githubProfileImages.isConfigured()) {
-                    try {
-                        await githubProfileImages.remove(
-                            path.basename(oldPicture),
-                            "Remove replaced PrivLines profile image"
-                        );
-                    } catch (error) {
-                        console.warn("Altes Profilbild konnte nicht aus GitHub entfernt werden:", error.message);
-                    }
-                }
-
-                const oldFile = path.join(profileUploadPath, path.basename(oldPicture));
+                const oldFile =
+                    path.join(
+                        publicPath,
+                        oldPicture
+                            .replace(
+                                "/uploads/",
+                                "uploads/"
+                            )
+                    );
 
                 if (
                     fs.existsSync(
@@ -770,10 +682,6 @@ app.post(
                         );
                     } catch (_) {}
                 }
-            }
-
-            if (githubProfileImages.isConfigured()) {
-                try { fs.unlinkSync(req.file.path); } catch (_) {}
             }
 
             const profilePayload = { userId:Number(userId), profilePicture:profilePicture };
@@ -798,15 +706,6 @@ app.post(
             });
 
         } catch (error) {
-
-            if (req.file && githubProfileImages.isConfigured()) {
-                try {
-                    await githubProfileImages.remove(
-                        req.file.filename,
-                        "Remove incomplete PrivLines profile image upload"
-                    );
-                } catch (_) {}
-            }
 
             console.error(
                 "❌ Profilbild-Fehler:",
@@ -1054,13 +953,13 @@ app.post(
                         messageType === "video" ? "🎥 Video" : "📷 Bild"
                 }
             );
-            void pushToUser(receiverId, req.user.mode, {
-                kind: "message",
-                chatId: String(chatId),
-                title: req.user.username || "PrivLines",
-                body: "Du hast eine neue Nachricht in PrivLines.",
-                url: "/chat.html"
-            });
+            if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
+                void pushToUser(receiverId, req.user.mode, {
+                    title: req.user.username || "PrivLines",
+                    body: "Du hast eine neue Nachricht in PrivLines.",
+                    url: "/chat.html"
+                });
+            }
 
             return res.json({
                 success:
@@ -1137,12 +1036,12 @@ app.post("/api/upload/audio", authenticateToken, uploadVoiceMessage.single("audi
             chatId, senderId: userId, senderUsername: req.user.username,
             senderDisplayName: req.user.displayName || req.user.username, text: '🎙️ Sprachnachricht'
         });
-        void pushToUser(receiverId, 'standard', {
-            kind: "message",
-            chatId: String(chatId),
-            title: req.user.displayName || req.user.username || 'PrivLines',
-            body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
-        });
+        if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
+            void pushToUser(receiverId, 'standard', {
+                title: req.user.displayName || req.user.username || 'PrivLines',
+                body: 'Du hast eine neue Sprachnachricht in PrivLines.', url: '/chat.html'
+            });
+        }
         return res.json({ success: true, blocked: false, message });
     } catch (error) {
         console.error('❌ Sprachnachricht-Upload-Fehler:', error);
@@ -1486,7 +1385,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            SESSION_TTL
+                            "7d"
                     }
                 );
 
@@ -1501,10 +1400,10 @@ app.post(
                         "lax",
 
                     secure:
-                        COOKIE_SECURE,
+                        false,
 
                     maxAge:
-                        SESSION_MAX_AGE,
+                        7 * 24 * 60 * 60 * 1000,
 
                     path:
                         "/"
@@ -1641,7 +1540,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            SESSION_TTL
+                            "7d"
                     }
                 );
 
@@ -1656,10 +1555,10 @@ app.post(
                         "lax",
 
                     secure:
-                        COOKIE_SECURE,
+                        false,
 
                     maxAge:
-                        SESSION_MAX_AGE,
+                        7 * 24 * 60 * 60 * 1000,
 
                     path:
                         "/"
@@ -1754,17 +1653,7 @@ app.delete("/api/account", authenticateToken, async (req,res) => {
         await conn.query(`DELETE FROM ${table} WHERE id=?`, [userId]);
         await conn.commit();
         if (oldProfilePicture && oldProfilePicture.startsWith("/uploads/profiles/")) {
-            if (githubProfileImages.isConfigured()) {
-                try {
-                    await githubProfileImages.remove(
-                        path.basename(oldProfilePicture),
-                        "Remove deleted PrivLines profile image"
-                    );
-                } catch (error) {
-                    console.warn("Profilbild des gelöschten Kontos konnte nicht aus GitHub entfernt werden:", error.message);
-                }
-            }
-            const oldFile = path.join(profileUploadPath, path.basename(oldProfilePicture));
+            const oldFile = path.join(publicPath, oldProfilePicture.replace("/uploads/", "uploads/"));
             try { if (fs.existsSync(oldFile)) fs.unlinkSync(oldFile); } catch (_) {}
         }
         res.clearCookie("session", {path:"/"});
@@ -1790,7 +1679,7 @@ app.post(
                     "lax",
 
                 secure:
-                    COOKIE_SECURE,
+                    false,
 
                 path:
                     "/"
@@ -2014,7 +1903,7 @@ app.post(
                     process.env.JWT_SECRET,
                     {
                         expiresIn:
-                            SESSION_TTL
+                            "7d"
                     }
                 );
 
@@ -2029,10 +1918,10 @@ app.post(
                         "lax",
 
                     secure:
-                        COOKIE_SECURE,
+                        false,
 
                     maxAge:
-                        SESSION_MAX_AGE,
+                        7 * 24 * 60 * 60 * 1000,
 
                     path:
                         "/"
@@ -4166,12 +4055,6 @@ async function sendFriendRequestHandler(req, res) {
                             mode
                     }
                 );
-                void pushToUser(receiverId, mode, {
-                    kind: "friend-request",
-                    title: "Neue Freundschaftsanfrage",
-                    body: `${req.user.displayName || req.user.username || "Jemand"} möchte dich als Freund hinzufügen.`,
-                    url: "/chat.html"
-                });
 
                 return res.json({
                     success:
@@ -4316,12 +4199,6 @@ async function sendFriendRequestHandler(req, res) {
                     mode
             }
         );
-        void pushToUser(receiverId, mode, {
-            kind: "friend-request",
-            title: "Neue Freundschaftsanfrage",
-            body: `${senderDisplayName || req.user.username || "Jemand"} möchte dich als Freund hinzufügen.`,
-            url: "/chat.html"
-        });
 
         return res.json({
             success:
@@ -4601,12 +4478,6 @@ app.post(
                         chatId
                 }
             );
-            void pushToUser(request.sender_id, mode, {
-                kind: "friend-request-accepted",
-                title: "Freundschaft angenommen",
-                body: `${acceptedReceiver.displayName || acceptedReceiver.username || "Jemand"} hat deine Anfrage angenommen.`,
-                url: "/chat.html"
-            });
 
             io.to(
                 `user-${request.receiver_id}`
@@ -4632,12 +4503,6 @@ app.post(
                         chatId
                 }
             );
-            void pushToUser(request.receiver_id, mode, {
-                kind: "friend-request-accepted",
-                title: "Freundschaft angenommen",
-                body: `${acceptedSender.displayName || acceptedSender.username || "Jemand"} hat deine Anfrage angenommen.`,
-                url: "/chat.html"
-            });
 
             return res.json({
                 success:
@@ -5207,33 +5072,6 @@ app.get(
 
 
 // =====================================================
-// WEBRTC ICE CONFIGURATION (STUN + optional TURN)
-// Configure TURN_URLS, TURN_USERNAME and TURN_CREDENTIAL in the server environment
-// for reliable calls across restrictive mobile/carrier/Wi-Fi networks.
-// =====================================================
-app.get("/api/webrtc-config", authenticateToken, (req, res) => {
-    const iceServers = [
-        { urls: "stun:stun.l.google.com:19302" },
-        { urls: "stun:stun1.l.google.com:19302" }
-    ];
-    const turnUrls = String(process.env.TURN_URLS || "")
-        .split(",")
-        .map(value => value.trim())
-        .filter(Boolean);
-    const turnUsername = String(process.env.TURN_USERNAME || "").trim();
-    const turnCredential = String(process.env.TURN_CREDENTIAL || "").trim();
-    if (turnUrls.length && turnUsername && turnCredential) {
-        iceServers.push({
-            urls: turnUrls.length === 1 ? turnUrls[0] : turnUrls,
-            username: turnUsername,
-            credential: turnCredential
-        });
-    }
-    res.set("Cache-Control", "no-store");
-    res.json({ iceServers });
-});
-
-// =====================================================
 // PRIVATE CHAT ÖFFNEN / ERSTELLEN
 // =====================================================
 
@@ -5705,17 +5543,9 @@ app.post("/api/groups/:groupId/media", authenticateToken, groupMediaUpload.singl
         const message=rows[0];
         const [members]=await db.execute(`SELECT user_id AS userId FROM group_members WHERE group_id=?`,[groupId]);
 
-        for (const member of members) {
-            const recipientId = Number(member.userId);
-            if (recipientId === userId) continue;
-            if (await areUsersBlocked(userId, recipientId)) continue;
-            io.to(`user-${recipientId}`).emit("groupMessage", message);
-            void pushToUser(recipientId, "standard", {
-                kind: "message",
-                title: message.displayName || message.username || "PrivLines",
-                body: "Du hast ein Medium in einer PrivLines-Gruppe erhalten.",
-                url: "/chat.html"
-            });
+        for(const member of members) {
+            if(Number(member.userId)!==userId && await areUsersBlocked(userId,Number(member.userId))) continue;
+            io.to(`user-${member.userId}`).emit("groupMessage",message);
         }
 
         return res.json(message);
@@ -5744,18 +5574,7 @@ app.post("/api/groups/:groupId/messages", authenticateToken, async (req,res) => 
             WHERE gm.id=? LIMIT 1
         `,[result.insertId]);
         const message=rows[0]; const [members]=await db.execute(`SELECT user_id AS userId FROM group_members WHERE group_id=?`,[groupId]);
-        for (const member of members) {
-            const recipientId = Number(member.userId);
-            if (recipientId === userId) continue;
-            if (await areUsersBlocked(userId, recipientId)) continue;
-            io.to(`user-${recipientId}`).emit("groupMessage", message);
-            void pushToUser(recipientId, "standard", {
-                kind: "message",
-                title: message.displayName || message.username || "PrivLines",
-                body: "Du hast eine neue Gruppennachricht in PrivLines.",
-                url: "/chat.html"
-            });
-        }
+        for(const member of members){ if(Number(member.userId)!==userId && await areUsersBlocked(userId,Number(member.userId))) continue; io.to(`user-${member.userId}`).emit("groupMessage",message); }
         return res.json(message);
     } catch(error){ console.error("❌ Gruppennachricht Fehler:",error); return res.status(500).json({error:"Gruppennachricht konnte nicht gesendet werden."}); }
 });
@@ -6663,30 +6482,6 @@ io.on(
         sendPendingFriendRequests(socket);
 
         // =================================================
-        // PRIVATEN CHAT RAUM SICHER BEITRETEN
-        // =================================================
-
-        socket.on("joinChat", async chatId => {
-            const numericChatId = Number(chatId);
-            if (!Number.isInteger(numericChatId) || numericChatId <= 0) return;
-            try {
-                const [rows] = await db.execute(`
-                    SELECT id FROM chats
-                    WHERE id = ? AND mode = ? AND (user1_id = ? OR user2_id = ?)
-                    LIMIT 1
-                `, [numericChatId, mode, userId, userId]);
-                if (!rows.length) {
-                    socket.emit("chatError", { error: "Kein Zugriff auf diesen Chat." });
-                    return;
-                }
-                socket.join(`chat-${numericChatId}`);
-            } catch (error) {
-                console.error("Chat-Raum konnte nicht betreten werden:", error);
-                socket.emit("chatError", { error: "Chat-Verbindung konnte nicht hergestellt werden." });
-            }
-        });
-
-        // =================================================
         // CHAT VERLASSEN
         // =================================================
 
@@ -6943,15 +6738,13 @@ io.on(
                                 text
                         }
                     );
-                    void pushToUser(receiverId, mode, {
-                        kind: "message",
-                        chatId: String(chatId),
-                        senderId: String(userId),
-                        senderUsername: username,
-                        title: displayName || username || "PrivLines",
-                        body: "Du hast eine neue Nachricht in PrivLines.",
-                        url: "/chat.html"
-                    });
+                    if (!io.sockets.adapter.rooms.get(`user-${receiverId}`)?.size) {
+                        void pushToUser(receiverId, mode, {
+                            title: displayName || username || "PrivLines",
+                            body: "Du hast eine neue Nachricht in PrivLines.",
+                            url: "/chat.html"
+                        });
+                    }
 
                 } catch (error) {
 
@@ -7373,43 +7166,37 @@ io.on(
         // =================================================
         socket.on("call:offer", async data => {
             const toUserId = Number(data?.toUserId);
-            const callId = typeof data?.callId === "string" ? data.callId.slice(0, 128) : "";
-            if (!Number.isInteger(toUserId) || toUserId <= 0 || !callId || !data?.offer) return;
-            try {
-                // Immer erst dauerhaft ablegen. Eine offene Socket-Verbindung sagt
-                // nicht zuverlässig aus, ob die App im Hintergrund reagieren kann.
-                await db.execute(`
-                    INSERT INTO pending_call_offers
-                        (call_id, recipient_user_id, mode, caller_user_id, caller_name, video, offer, expires_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
-                    ON DUPLICATE KEY UPDATE caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), offer=VALUES(offer), created_at=CURRENT_TIMESTAMP, expires_at=VALUES(expires_at)
-                `, [callId, toUserId, mode, userId, displayName, data.video ? 1 : 0, JSON.stringify(data.offer)]);
-            } catch (error) {
-                console.warn("Anrufangebot konnte nicht zwischengespeichert werden:", error.message);
-                socket.emit("call:error", { callId, error: "Anruf konnte nicht zugestellt werden. Bitte erneut versuchen." });
-                return;
+            if (!Number.isInteger(toUserId) || toUserId <= 0) return;
+            const recipientRoom = `user-${toUserId}`;
+            const recipientOnline = !!io.sockets.adapter.rooms.get(recipientRoom)?.size;
+            if (!recipientOnline && typeof data?.callId === "string" && data.callId && data.offer) {
+                try {
+                    await db.execute(`
+                        INSERT INTO pending_call_offers
+                            (call_id, recipient_user_id, mode, caller_user_id, caller_name, video, offer, expires_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
+                        ON DUPLICATE KEY UPDATE caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), offer=VALUES(offer), expires_at=VALUES(expires_at)
+                    `, [String(data.callId).slice(0, 128), toUserId, mode, userId, displayName, data.video ? 1 : 0, JSON.stringify(data.offer)]);
+                } catch (error) {
+                    console.warn("Anrufangebot konnte nicht zwischengespeichert werden:", error.message);
+                }
             }
             io.to(`user-${toUserId}`).emit("call:incoming", {
-                callId,
+                callId: data.callId,
                 fromUserId: userId,
                 fromUsername: displayName,
                 video: !!data.video,
                 offer: data.offer
             });
-            // Push auch bei verbundenen Clients senden. Der Service Worker zeigt
-            // den Systemhinweis auch bei gesperrtem Bildschirm an.
-            const pushPayload = {
-                kind: "call",
-                title: `Anruf von ${displayName}`,
-                body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
-                callId,
-                callerUserId: String(userId),
-                callerName: displayName,
-                video: data.video ? "true" : "false",
-                url: "/chat.html"
-            };
-            void pushToUser(toUserId, mode, pushPayload);
-            void pushAndroidToUser(toUserId, mode, pushPayload);
+            if (!recipientOnline) {
+                await pushToUser(toUserId, mode, {
+                    kind: "call",
+                    title: `Anruf von ${displayName}`,
+                    body: data.video ? "Eingehender Videoanruf" : "Eingehender Anruf",
+                    callId: String(data.callId || ""),
+                    url: "/chat.html"
+                });
+            }
         });
 
         socket.on("call:fetch-pending", async () => {
@@ -7421,6 +7208,7 @@ io.on(
                     WHERE recipient_user_id=? AND mode=? AND expires_at > NOW()
                     ORDER BY created_at ASC
                 `, [userId, mode]);
+                await db.execute("DELETE FROM pending_call_offers WHERE recipient_user_id=? AND mode=?", [userId, mode]);
                 for (const call of pendingCalls) {
                     socket.emit("call:incoming", {
                         ...call,
@@ -7448,10 +7236,6 @@ io.on(
         socket.on("call:answer", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
-            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
-                .catch(error => console.warn("Angenommener Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
-            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
-            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:answer", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7472,10 +7256,6 @@ io.on(
         socket.on("call:reject", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
-            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
-                .catch(error => console.warn("Abgelehnter Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
-            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
-            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7486,10 +7266,6 @@ io.on(
         socket.on("call:busy", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
-            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [String(data?.callId || "").slice(0, 128), userId, mode])
-                .catch(error => console.warn("Besetzt-Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
-            void pushAndroidToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
-            void pushToUser(userId, mode, { kind: "call-ended", callId: String(data?.callId || "") });
             io.to(`user-${toUserId}`).emit("call:rejected", {
                 callId: data.callId,
                 fromUserId: userId,
@@ -7500,15 +7276,10 @@ io.on(
         socket.on("call:end", data => {
             const toUserId = Number(data?.toUserId);
             if (!Number.isInteger(toUserId) || toUserId <= 0) return;
-            const callId = String(data?.callId || "").slice(0, 128);
-            void db.execute("DELETE FROM pending_call_offers WHERE call_id=? AND recipient_user_id=? AND mode=?", [callId, toUserId, mode])
-                .catch(error => console.warn("Beendeter Anruf konnte nicht aus der Warteschlange entfernt werden:", error.message));
             io.to(`user-${toUserId}`).emit("call:ended", {
-                callId,
+                callId: data.callId,
                 fromUserId: userId
             });
-            void pushAndroidToUser(toUserId, mode, { kind: "call-ended", callId });
-            void pushToUser(toUserId, mode, { kind: "call-ended", callId });
         });
 
         socket.on("groupCall:invite", async data => {
@@ -7535,18 +7306,18 @@ io.on(
                             fromUsername: displayName,
                             video: !!data.video
                         });
-                    } else {
-                        await db.execute(`
-                            INSERT INTO pending_group_call_invites
-                                (call_id, recipient_user_id, mode, group_id, caller_user_id, caller_name, video, expires_at)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
-                            ON DUPLICATE KEY UPDATE group_id=VALUES(group_id), caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), expires_at=VALUES(expires_at)
-                        `, [callId, recipientId, mode, groupId, userId, displayName, data.video ? 1 : 0]);
+                        continue;
                     }
 
-                    // Push auch für verbundene, aber im Hintergrund befindliche Clients.
+                    await db.execute(`
+                        INSERT INTO pending_group_call_invites
+                            (call_id, recipient_user_id, mode, group_id, caller_user_id, caller_name, video, expires_at)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, DATE_ADD(NOW(), INTERVAL 90 SECOND))
+                        ON DUPLICATE KEY UPDATE group_id=VALUES(group_id), caller_user_id=VALUES(caller_user_id), caller_name=VALUES(caller_name), video=VALUES(video), expires_at=VALUES(expires_at)
+                    `, [callId, recipientId, mode, groupId, userId, displayName, data.video ? 1 : 0]);
+
                     void pushToUser(recipientId, mode, {
-                        kind: "group-call",
+                        kind: "call",
                         title: `Gruppenanruf von ${displayName}`,
                         body: data.video ? "Eingehender Gruppen-Videoanruf" : "Eingehender Gruppenanruf",
                         callId,
@@ -8223,17 +7994,6 @@ async function ensurePushSchema() {
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
     `);
     await db.execute(`
-        CREATE TABLE IF NOT EXISTS android_push_tokens (
-            token_hash CHAR(64) NOT NULL PRIMARY KEY,
-            token TEXT NOT NULL,
-            user_id BIGINT NOT NULL,
-            mode VARCHAR(20) NOT NULL DEFAULT 'standard',
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-            KEY android_push_user_lookup (user_id, mode)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-    `);
-    await db.execute(`
         CREATE TABLE IF NOT EXISTS pending_call_offers (
             call_id VARCHAR(128) NOT NULL,
             recipient_user_id BIGINT UNSIGNED NOT NULL,
@@ -8273,7 +8033,6 @@ async function ensurePushSchema() {
 
 server.listen(
     PORT,
-    HOST,
     async () => {
 
         console.log("");
