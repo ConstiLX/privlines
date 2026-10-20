@@ -120,6 +120,25 @@ const sidebar =
 const mobileBackButton =
     document.getElementById("mobileBackButton");
 
+function syncChatViewport() {
+    const viewport = window.visualViewport;
+    const height = viewport?.height || window.innerHeight;
+    const top = Math.max(0, viewport?.offsetTop || 0);
+    document.documentElement.style.setProperty(
+        "--privlines-viewport-height",
+        `${Math.round(height)}px`
+    );
+    document.documentElement.style.setProperty(
+        "--privlines-viewport-top",
+        `${Math.round(top)}px`
+    );
+}
+
+syncChatViewport();
+window.addEventListener("resize", syncChatViewport);
+window.visualViewport?.addEventListener("resize", syncChatViewport);
+window.visualViewport?.addEventListener("scroll", syncChatViewport);
+
 
 /* ======================================================
    CHAT-MENÜ

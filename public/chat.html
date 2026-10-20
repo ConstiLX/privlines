@@ -6,7 +6,7 @@
 
 <meta charset="UTF-8">
 
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 
 <title>PrivLines</title>
 
@@ -1479,9 +1479,9 @@ button:disabled{
 
     .app{
         position:fixed;
-        inset:0;
+        inset:var(--privlines-viewport-top, 0px) 0 auto;
         width:100vw;
-        height:100dvh;
+        height:var(--privlines-viewport-height, 100dvh);
         display:block;
         padding:0;
         overflow:hidden;
@@ -3149,7 +3149,10 @@ body{
     .chat-header{min-height:66px;padding:10px 13px}
     #messages{padding:14px 11px}
     .message{max-width:88%}
-    .message-area{gap:7px;padding:10px}
+    .message-area{
+        gap:7px;
+        padding:10px 10px max(10px,env(safe-area-inset-bottom));
+    }
     #voiceButton,#photoButton{width:40px;min-width:40px;height:40px}
     #messageInput{height:42px;padding:0 11px}
     #sendButton{min-width:42px;height:42px;padding:0 10px}
